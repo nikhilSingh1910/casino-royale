@@ -1,0 +1,18 @@
+# Local Claude Code settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Node (for when the build starts)
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
