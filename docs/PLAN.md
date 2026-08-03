@@ -32,9 +32,13 @@ Every workstream item runs the loop (`CLAUDE.md` §2) and ends against the check
                                      ▲ gated on B1 + feed/aggregator contracts
 ```
 
-**The critical insight for scheduling:** Phase 0 is entirely jurisdiction-independent. The ledger,
-money primitives, odds ladder, identity state machine, audit store and job runner do not change
-based on which regulator we end up under. **Do not idle waiting on B1** — see `docs/STATE.md`.
+**The critical insight for scheduling:** Phase 0 does not need to know *which* jurisdiction before
+starting. The ledger, money primitives, price types, identity state machine, audit store and job
+runner are all buildable now. **Do not idle waiting on B1** — see `docs/STATE.md`.
+
+*Stated precisely:* the claim is about **sequencing**, not total independence. B1 still shapes the
+account state machine's self-exclusion terms and the currency decision in §12 item 3(a). "Start
+now" is right; "B1 is irrelevant to Phase 0" would not be.
 
 **The critical insight for the timeline:** licence applications run 4–12 months and several
 jurisdictions require the platform to be materially complete and lab-certified *before* grant.
@@ -44,7 +48,16 @@ Engineering schedules against the licence timeline, not the reverse.
 
 ## PHASE 0 — Foundations
 
-Startable immediately. Nothing here is blocked.
+Startable immediately in **sequencing** terms — none of A–D needs to know which regulator we end
+up under before work begins.
+
+> **But two sign-offs gate specific items, and they are not the same gate.**
+> **M0 / Workstream C** is blocked only on **D6** (runtime choice).
+> **Workstream A** is blocked on `docs/ARCHITECTURE.md` **§12 items 1, 2, 3(a) and 8** — see the ⚠️
+> note under A's exit gate. Scaffolding, lint and CI can proceed while those are decided.
+>
+> An earlier version of this line read *"Nothing here is blocked"*, which stopped being true the
+> moment §12 was written.
 
 ### Workstream A — Money core
 
@@ -53,7 +66,7 @@ The highest-priority work in the project. Everything else assumes it is correct.
 | # | Item | Notes |
 |---|---|---|
 | A1 | Money type — integer minor units, arithmetic, explicit directional rounding | `CLAUDE.md` §3.1. No float, `bigint` at boundaries |
-| A2 | Odds ladder — tick↔price, increments, validation | §5.4. Off-ladder prices must be unrepresentable |
+| A2 | **Two** price types — exchange ladder (tick↔price, increments, validation) **and** sportsbook scaled integers | §5.4. Off-ladder prices unrepresentable **for the exchange only**; feed prices are arbitrary decimals and must not be forced onto the ladder (`CLAUDE.md` §3.1) |
 | A3 | Ledger — TigerBeetle client, account model, transfer primitives | D5. Accounts: user cash · user bonus · user reserved · house commission · house liability · PSP suspense |
 | A4 | Idempotency helper — the single implementation | §5.6. Every money path uses it |
 | A5 | Reconciliation job — ledger ↔ relational, break reporting | Runs from day one, not added later |
@@ -150,14 +163,14 @@ book is worthless and users do not return after seeing one (D11).
 | # | Workstream | Notes |
 |---|---|---|
 | N | Order book + matching — price-time priority, partial fills, order types | Matching is the solved part; `exchange-core` and LMAX Disruptor as design references (D6) |
-| O | Exposure engine — net position per user per market, worst-case across runners | The part we write. Most-used screen for serious users; correctness *and* latency |
+| O | Exposure engine — `calculateCustomerExposure()`, worst-case across runners | The part we write. Most-used screen for serious users; correctness *and* latency. **Distinct from `calculateOperatorLiability()`** (`CLAUDE.md` §5 rules 2 and 11). ⚠️ Whether funds are reserved **gross per order** or **net per market** is `ARCHITECTURE.md` §12 item 6, unsigned |
 | P | Commission — per-market, per-tier, shown pre-bet by the same function that charges it | §5.3 |
 | Q | In-play — bet delay, suspension on incident, keep-in-play orders | Suspension cancels nothing; blocks new matching only |
 | R | Trader API — REST for state, WebSocket for prices, keyed and rate-limited | How liquidity providers are acquired. Not optional |
 
 **Exit gate.** Closed beta meets `PRD.md` §9.3's **beta-exit** row — **<5% back/lay spread on the
-single seeded market** at kick-off,
->70% matched-order rate, P99 match latency <150 ms.
+single seeded market** at kick-off, matched-order rate **above 70%**, and P99 match latency
+**under 150 ms**.
 
 ---
 
@@ -181,7 +194,9 @@ Carried from `PRD.md` Appendix A.2 — the components that look small and are no
   Cannot be bolted on late, which is exactly when teams try.
 - **Settlement edge cases** — voids, dead heats, non-runners, abandonments, partial settlement,
   resettlement. Long tail, all money-affecting.
-- **In-play load** — 20× spikes at kick-off. Nothing like a normal web app.
+- **In-play load** — spiky at kick-off in a way nothing else in a normal web app is. The **~20×
+  figure is a placeholder**, not a measurement (`PRD.md` §12); replace it with the feed provider's
+  observed numbers for the target sports before it drives capacity planning.
 
 ## External dependencies — flag with owners at kickoff
 

@@ -409,12 +409,48 @@ credit claim). All three are edits I made without completing the corresponding d
 
 ---
 
-## 11. NOT YET DONE
+## 11. DISPOSITION — what has been applied
 
-No source document has been modified. Outstanding before any edits:
+> This section previously read *"No source document has been modified."* That was accurate when
+> this document was compiled and stopped being true once the corrections were applied on
+> 2026-08-04. Updated rather than left standing.
 
-1. Adjudicate the German stake rule (§8).
-2. Verify H52 before touching D1.
-3. Decide whether the reservation redesign (C1–C4) changes D12 or only its implementation notes.
-4. Sequence the rest — roughly 40 document-integrity fixes are mechanical and safe; the money-model
-   changes (C1–C8) are a design decision, not an edit.
+### Applied ✅
+
+- **All factual corrections.** Sofort and Giropay removed; AMLD→AMLR handover; §2 platform-identity
+  claim corrected via **D22**; §5.3's uncited fancy-market prohibition withdrawn via **D21**; §4.4's
+  credit ground corrected via **D20**; §10.3's German stake rule corrected and re-tagged; §10.4
+  rebuilt against HMRC primary guidance.
+- **All ID collisions and dangling references.** `WD`/`WM` prefixes, `D19` created to close the
+  dangling `D20` reference, legends added to PLAN, MILESTONES and STATE.
+- **Both wrong CLAUDE.md rules.** §3.1 split into exchange tick-index and sportsbook scaled-integer
+  prices; §5 rule 2 split into customer exposure and operator liability (new rule 11).
+- **Cross-document contradictions.** Spread gate aligned across PRD/PLAN/MILESTONES; M1's exit gate
+  now stated identically in PLAN and MILESTONES; ARCHITECTURE's money-seam diagram routed through
+  `ledger/` and `repo`; §9's failure table cross-referenced to §12 where it was contradicted.
+- **Milestone propagation.** `A2.2` qualified and `A2.4`/`A2.5` added; `O1` renamed; `A4.1` gains
+  the UNIQUE constraint; M1's proof invariant rescoped; M8's proof no longer requires M10's work;
+  M9's dependencies stated.
+
+### Held for sign-off, not applied ⏸
+
+The eight architectural decisions are recorded in `docs/ARCHITECTURE.md` §12 with recommendations
+and status. Three M1 tasks (`A3.2`, `A3.3`, `A4.5`) carry ⚠️ markers and **must not be implemented
+as written**.
+
+### Deferred by decision 📋
+
+Everything in finding **#5** (PII placement), plus C12, C20, C21 and the §11.11 obligations, move to
+a later combined compliance cycle covering GDPR, SOC2 and related. One carve-out survives because it
+is unretrofittable: `C4.2`'s audit wrapper must log **opaque user IDs, never names or emails** —
+immudb is cryptographically append-only.
+
+### Still open ❓
+
+1. **H52** — "the agent hierarchy is not structurally unlicensable, Sweden registers gambling agents
+   by statute." Unverified and doubted: Swedish *spelombud* are retail ticket agents, not
+   credit-extending agents holding player funds. **D1 has not been weakened on this basis.**
+2. The unverified rates and rules in **§8b** — Sweden, Germany, the AMLR application date, the
+   German tiered stake. Needs a session with search budget.
+3. **C22's design specification.** The parity agent produced implementable values from public theme
+   tokens. Not yet written into the documents — see `PRD.md` §11.0, which does not exist yet.

@@ -17,7 +17,7 @@ the build plan.
 | [`CLAUDE.md`](CLAUDE.md) | The working contract. Binding on every coding session — the loop, the evidence rule, single-owner rules |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System shape, the money seam, failure modes, and **§12 — architectural decisions still open** |
 | [`docs/PLAN.md`](docs/PLAN.md) | Build sequence by workstream and phase |
-| [`docs/MILESTONES.md`](docs/MILESTONES.md) | 15 milestones, each ending in a demonstrable proof |
+| [`docs/MILESTONES.md`](docs/MILESTONES.md) | 16 milestones (M0–M15), each ending in a demonstrable proof |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D23, append-only. Authoritative on *why* |
 | [`docs/REVIEW-FINDINGS.md`](docs/REVIEW-FINDINGS.md) | Output of the 2026-08-04 adversarial review — 142 findings and their disposition |
 
@@ -35,8 +35,8 @@ Blocking:
   1, 2, 3(a) and 8. All are ledger-shaped and unretrofittable under D5, so they must be settled
   before Workstream A begins.
 
-Phase 0 workstreams A–C are deliberately jurisdiction-independent and can start once §12 is signed
-off.
+Phase 0 has four workstreams (A–D) and none needs to know which jurisdiction before starting.
+Workstream C (scaffold) is gated only on D6; Workstream A is gated on §12.
 
 ---
 

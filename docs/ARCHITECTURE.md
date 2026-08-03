@@ -346,16 +346,16 @@ Provider callbacks are the highest-volume money path and the one most likely to 
 
 | Failure | Behaviour |
 |---|---|
-| TigerBeetle unavailable | All money operations halt. No bet accepted, no deposit, no payout. **Fails closed** |
+| ⚠️ TigerBeetle unavailable | **Contested — see §12 item 2.** This row says all money operations halt and nothing is accepted. §2.2's intent-first design says the opposite for some paths, and §3.1 shows a third behaviour. **Three documents, three answers, on the highest-risk failure in the system.** The proposed resolution is in §12; until it is signed off, treat this row as *aspiration, not specification* |
 | Matching engine shard down | That market suspends. Sportsbook and casino unaffected |
-| Matching engine restart | Replays command log; book rebuilt; reservations already durable in ledger |
+| ⚠️ Matching engine restart | Replays command log; book rebuilt. *"Reservations already durable in ledger"* **is only true if `timeout = 0`** — TigerBeetle returns the full amount to the original account on expiry (D19 quote 3), silently and with no domain event. See §12 item 1 |
 | Feed down | Affected markets go unavailable and accept no bets. **No fabricated prices** (`CLAUDE.md` §3.10) |
 | Self-exclusion register unreachable | Deposit and login blocked for affected users. Fails closed |
-| Provider callback duplicated | No-op returning the first result |
+| Provider callback duplicated | No-op returning the first result — **provided `money_operation` carries a UNIQUE constraint on the caller idempotency key** (`MILESTONES.md` A4.1). Without it, two nodes mint two transfer IDs and debit twice, and the ledger still balances |
 | Provider callback during our outage | Provider retries; idempotency makes replay safe |
-| Postgres commit succeeds, TigerBeetle call lost | Sweeper completes it. This is the designed path, not an incident |
+| ⚠️ Postgres commit succeeds, TigerBeetle call lost | Sweeper completes it — **unless the transfer failed on a transient error.** `id_already_failed` is permanent: that ID *"will always fail upon retry, even if the underlying issue is resolved"* (D19 quote 7). The retry path is poisoned and the operation can never reach `COMPLETE`. See §12 item 1 |
 | Settlement arrives twice | Idempotent by result ID; second is a no-op |
-| Partial fill races a cancel | Single writer per market orders them. One wins, deterministically |
+| ⚠️ Partial fill races a cancel | **This row is wrong as written.** Single-writer-per-market orders events *inside the engine*, but the release amount is computed in the platform process from a read model that can be stale — so a cancel arriving just after a fill can release funds belonging to a matched bet. Determinism in the engine does not make the money correct. See §12 item 4 |
 
 ---
 
