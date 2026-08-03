@@ -58,9 +58,17 @@ The highest-priority work in the project. Everything else assumes it is correct.
 | A4 | Idempotency helper — the single implementation | §5.6. Every money path uses it |
 | A5 | Reconciliation job — ledger ↔ relational, break reporting | Runs from day one, not added later |
 
-**Exit gate.** Property tests pass: the ledger always balances; no sequence of valid operations
-reaches a negative available balance; reserved never exceeds cash. Ledger reconciles under a
-concurrent load fixture.
+**Exit gate.** Property tests pass: the ledger always balances; **no *wager* path** reaches a
+negative available balance; `available + reserved` accounts for every unit deposited less that
+withdrawn, won and lost; and `sum(reserved over open orders) == reserved account balance` per user.
+Ledger reconciles under a concurrent load fixture. *(Must match `docs/MILESTONES.md` M1's proof
+verbatim — these are the same gate stated twice.)*
+
+> ⚠️ **A3 is gated on `docs/ARCHITECTURE.md` §12 items 1, 3(a) and 8.** The account model is missing
+> a dispute-suspense account and a currency dimension, and the `reserve / capture / release`
+> primitive vocabulary points at TigerBeetle two-phase pending transfers, which cannot survive
+> partial fills (D19, primary-verified). See the ⚠️ markers on `A3.2`, `A3.3` and `A4.5` in
+> `docs/MILESTONES.md`.
 
 ### Workstream B — Identity core
 
