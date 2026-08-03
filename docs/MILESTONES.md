@@ -50,9 +50,17 @@ M1, M2 and M3 run largely in parallel once M0 lands.
 
 ## 🟢 M1 — Money is provably correct · **XL**
 
-> **Proof:** property tests pass — the ledger always balances, no valid operation sequence reaches
-> a negative available balance, reserved never exceeds cash. Ledger reconciles clean after a
-> concurrent load fixture with induced mid-operation failures.
+> **Proof:** property tests pass — the ledger always balances; **no *wager* path reaches a negative
+> available balance**; `available + reserved` accounts for every unit deposited less that withdrawn,
+> won and lost; and `sum(reserved over open orders) == reserved account balance` per user. Ledger
+> reconciles clean after a concurrent load fixture with induced mid-operation failures.
+>
+> **Two corrections 2026-08-04.** (1) The invariant was "no operation sequence reaches a negative
+> available balance" — false once chargebacks exist, since a chargeback on money already wagered
+> and lost *requires* a negative position or a suspense account (§12 item 8). Scoped to wager paths.
+> (2) "Reserved never exceeds cash" was ambiguous, since reserved funds move *out of* cash and the
+> two are disjoint. Replaced with the reconciliation invariant that actually catches a wrong release
+> amount, a lost release, or a double release.
 
 The highest-priority work in the project. Everything else assumes it.
 
@@ -61,19 +69,44 @@ The highest-priority work in the project. Everything else assumes it.
 - [ ] `A1.2` Arithmetic — add, subtract, multiply-by-rate with explicit rounding mode
 - [ ] `A1.3` Rounding policy — house's favour on commission, customer's on payouts, per-operation
 - [ ] `A1.4` Property test: no operation sequence creates or destroys value
-- [ ] `A2.1` Odds ladder — tick↔price table, 1.01–1000, variable increments
-- [ ] `A2.2` Off-ladder prices unrepresentable, not runtime-rejected
+- [ ] `A2.1` **Exchange** odds ladder — tick↔price table, 1.01–1000, variable increments
+- [ ] `A2.2` Off-ladder **exchange** prices unrepresentable, not runtime-rejected
 - [ ] `A2.3` Property test: tick → price → tick round-trips for every tick
+- [ ] `A2.4` **Sportsbook** prices as scaled integers (fixed-point) — a *separate* type from the
+      exchange tick index, per `CLAUDE.md` §3.1
+- [ ] `A2.5` Lint/CI: the two price types are not interchangeable
 
-**Ledger [A3]**
+> **Corrected 2026-08-04.** `A2.2` previously read "off-ladder prices unrepresentable" without
+> qualification, which is wrong for the sportsbook: feed prices are arbitrary decimals and 2.37 is
+> perfectly legitimate. Forcing them onto the exchange ladder would silently round every sportsbook
+> price to the nearest tick. `CLAUDE.md` §3.1 now specifies two representations; `A2.4`/`A2.5` make
+> that concrete.
+
+**Ledger [A3]** — ⚠️ **three items below are gated on `docs/ARCHITECTURE.md` §12. Do not implement
+them as currently written.**
+
 - [ ] `A3.1` TigerBeetle client wrapper in `ledger/` — the only caller in the codebase
-- [ ] `A3.2` Account model: user cash · user bonus · user reserved · house commission ·
+- [ ] ⚠️ `A3.2` Account model: user cash · user bonus · user reserved · house commission ·
       house liability · PSP suspense
-- [ ] `A3.3` Transfer primitives: reserve, release, capture, payout, commission
+      — **incomplete as written.** Missing a **house dispute-suspense** account (§12 item 8,
+      chargebacks) and any **currency dimension** (§12 item 3a — TigerBeetle fixes currency per
+      `ledger` at account-creation time, and D5 says this cannot be retrofitted)
+- [ ] ⚠️ `A3.3` Transfer primitives: reserve, release, capture, payout, commission
+      — **this vocabulary is known-wrong.** `reserve/capture/release` points implementers at
+      TigerBeetle two-phase pending transfers, which **cannot survive partial fills** (D19,
+      primary-verified). Rewrite against §12 item 1 before implementing. `reverse` is also missing
+      (§12 item 8)
 - [ ] `A3.4` Balance derivation — available, reserved, withdrawable. No stored authoritative balance
 
 **The seam [A4, D17]**
-- [ ] `A4.1` `money_operation` table — status, caller idempotency key, **precomputed** transfer ID
+- [ ] `A4.1` `money_operation` table — status, caller idempotency key, **precomputed** transfer ID.
+      **Must carry a UNIQUE constraint on the caller idempotency key.** Without it, the same key
+      arriving on two nodes mints two transfer IDs and debits twice — and the ledger still balances,
+      so nothing detects it (review finding C6)
+- [ ] `A4.5` Decide whether the transfer ID is **derived from** the idempotency key rather than
+      generated independently — §12 item 1. Note `id_already_failed` is permanent: a transfer ID
+      that fails on a transient error *"will always fail upon retry, even if the underlying issue is
+      resolved"* (D19 quote 7), so a naive derived-ID scheme poisons the sweeper's retry path
 - [ ] `A4.2` Idempotency helper — the single implementation (§5.6)
 - [ ] `A4.3` Intent → execute → confirm wrapper; every money path goes through it
 - [ ] `A4.4` Test: crash injected between commit and execute leaves a recoverable state
@@ -222,7 +255,12 @@ Launch blocker, not a feature. Cross-cutting — cannot be bolted on later.
 
 ## 🔴 M8 — A bet placed, settled, paid · **XL**
 > **Proof:** end-to-end — market open → bet placed against reserved funds → result ingested →
-> settlement → ledger movement → correct balance. Including a void and a resettlement.
+> settlement → ledger movement → correct balance, for a **single straightforward market**.
+>
+> **Scope note.** Void, resettlement and the settlement edge cases belong to **M10**, not here — an
+> earlier version of this proof required them, which made M8 un-passable until M10's work was done
+> while M10 is scheduled after it. M8 proves placement and a clean settlement path; M10 proves
+> settlement is correct under voids, corrections and replay.
 
 - [ ] `I1` Market and selection model; jurisdictional market-type filtering (D3 — no fancy/toss)
 - [ ] `I2` Two-phase placement: price validation → accept/reject on movement within tolerance
@@ -234,6 +272,9 @@ Launch blocker, not a feature. Cross-cutting — cannot be bolted on later.
 - [ ] `I8` Integrity monitoring feed (IBIA or equivalent)
 
 ## 🟠 M9 — Casino live with a seamless wallet · **L**
+**Depends on M6 (RG limits apply to casino play) and M7 (a funded wallet).** An earlier version of
+the critical-path diagram showed M9 branching only from the feed, which is wrong — casino play is
+subject to deposit, loss and session limits, and under a German licence to the per-spin stake tier.
 > **Proof:** a game round debits and credits correctly; a **duplicated** provider callback is a
 > no-op returning the first result; a rollback restores state exactly.
 
@@ -302,7 +343,10 @@ order book is worthless and users do not return after seeing one (D11).
 > **Proof:** bet slip, account screen, pre-wager check and risk console **agree** on exposure for a
 > user with positions across 20 markets. No O(n²) under a busy book.
 
-- [ ] `O1` `calculateExposure()` — the one implementation (§5.2)
+- [ ] `O1` `calculateCustomerExposure()` — the one implementation (`CLAUDE.md` §5 rule 2).
+      **Not** the same function as `calculateOperatorLiability()` (§5 rule 11), which the trading
+      console and auto-suspend use — those are different quantities from opposite sides of the
+      same positions
 - [ ] `O2` Worst-case P&L across every runner
 - [ ] `O3` Incremental maintenance + full recompute path
 - [ ] `O4` Property test: exposure never exceeds reserved funds
@@ -401,4 +445,15 @@ D6 → M0 → M1 ─────────────────────
 ```
 
 **Longest chain to launch:** M0 → M1 → M5 → M6 → M7 → M8 → M10 → M12.
-M2, M3, M4 and M9 have slack. M6 (RG) is the most commonly underestimated item on the path.
+
+**M2 and M3 have slack. M4 and M9 do not necessarily** — both are 🟠 contract-gated, and M8 depends
+on M4 while M9 depends on M6 and M7. If the feed or aggregator contract lands late, either becomes
+the constraint regardless of engineering capacity. An earlier version of this note claimed all four
+had slack, which is only true if the contracts land early.
+
+**M6 (RG) is the most commonly underestimated item on the path** — it looks like a settings screen
+and is actually cross-cutting: registration, login, deposit, wager, marketing, back-office, plus
+the D18 revocation channel.
+
+> **M1 additionally gated on `docs/ARCHITECTURE.md` §12 items 1, 2, 3(a) and 8.** Three tasks
+> inside it (`A3.2`, `A3.3`, `A4.5`) are marked ⚠️ and must not be implemented as written.
