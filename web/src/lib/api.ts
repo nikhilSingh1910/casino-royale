@@ -1,4 +1,4 @@
-import type { BalanceDto, MatchSummary, MatchViewDto, PlacedBetDto, Side } from './types';
+import type { BalanceDto, MatchSummary, MatchViewDto, PlacedBetDto, ScoreDto, Side } from './types';
 
 const BASE = '/api'; // dev-proxied to the Nest backend (vite.config)
 
@@ -51,6 +51,7 @@ export const api = {
   login: (email: string, password: string) => req<{ token: string; userId: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   matches: () => req<MatchSummary[]>('/matches'),
   match: (id: string) => req<MatchViewDto>(`/matches/${id}`),
+  score: (id: string) => req<ScoreDto>(`/matches/${id}/score`),
   balance: (token: string) => req<BalanceDto>('/me/balance', {}, token),
   placeBet: (token: string, dto: PlaceFancy) => req<PlacedBetDto>('/bets', { method: 'POST', body: JSON.stringify(dto) }, token),
   placeRunnerBet: (token: string, dto: PlaceRunner) => req<PlacedBetDto>('/runner-bets', { method: 'POST', body: JSON.stringify(dto) }, token),

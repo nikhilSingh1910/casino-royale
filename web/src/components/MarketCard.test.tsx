@@ -14,31 +14,17 @@ const matchOdds: MarketDto = {
   ],
   fancy: null,
 };
-const session: MarketDto = {
-  id: 'f1',
-  type: 'fancy',
-  name: '6 over runs',
-  status: 'open',
-  runners: [],
-  fancy: { line: 48, overs: 6, back: '19500', lay: '21000' },
-};
 
-describe('MarketCard', () => {
-  it('shows runner odds and selects a back bet on click', () => {
+describe('MarketCard (runner / LG-KH)', () => {
+  it('shows LG/KH headers, runner odds, and selects a back (LG) bet', () => {
     const onSelect = vi.fn();
     render(<MarketCard market={matchOdds} selection={null} onSelect={onSelect} />);
-    expect(screen.getByText('1.90')).toBeInTheDocument(); // India back @ 1.90
-    expect(screen.getByText('2.10')).toBeInTheDocument(); // Australia back @ 2.10
+    expect(screen.getByText('LG')).toBeInTheDocument();
+    expect(screen.getByText('KH')).toBeInTheDocument();
+    expect(screen.getByText('1.90')).toBeInTheDocument(); // India back
+    expect(screen.getByText('2.10')).toBeInTheDocument(); // Australia back
     fireEvent.click(screen.getByText('1.90'));
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: 'runner', side: 'back', runnerId: 'rA', price: '19000' }));
-  });
-
-  it('shows a session line with No/Yes and selects Yes as a back at the struck line', () => {
-    const onSelect = vi.fn();
-    render(<MarketCard market={session} selection={null} onSelect={onSelect} />);
-    expect(screen.getByText(/line 48/)).toBeInTheDocument();
-    fireEvent.click(screen.getByText(/Yes · 1.95/));
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: 'fancy', side: 'back', lineValue: 48, price: '19500' }));
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: 'runner', side: 'back', runnerId: 'rA', price: '19000', label: 'India · LG' }));
   });
 
   it('locks a suspended market — cells disabled, status badged', () => {

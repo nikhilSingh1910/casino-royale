@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { EmptyState, ErrorState, LoadingCards } from '../components/States';
 
+const fmtDate = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
 export function LobbyPage() {
   const q = useQuery({ queryKey: ['matches'], queryFn: api.matches });
 
@@ -17,15 +22,16 @@ export function LobbyPage() {
   return (
     <div>
       {matches.map((m) => (
-        <Link className="card" style={{ display: 'block' }} to={`/m/${m.id}`} key={m.id}>
+        <Link to={`/m/${m.id}`} key={m.id} style={{ display: 'block' }}>
           <div className="match">
+            <div className="match__icon">🏏</div>
             <div className="match__body">
               <div className="match__name">{m.name}</div>
               <div className="match__meta">
                 {m.competition} · {m.status}
               </div>
             </div>
-            <span className="chev">›</span>
+            <div className="match__date">{fmtDate(m.startsAt)}</div>
           </div>
         </Link>
       ))}

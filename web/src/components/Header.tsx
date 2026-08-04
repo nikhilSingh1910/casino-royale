@@ -17,26 +17,25 @@ export function Header() {
 
   return (
     <header className="hdr">
-      <div className="hdr__brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-        <span className="hdr__logo">E</span>
-        <span>Exchange</span>
+      <div className="hdr__logo" onClick={() => navigate('/')}>
+        <span className="hdr__mark">
+          TOP
+          <br />
+          5050
+        </span>
       </div>
-      <div className="hdr__spacer" />
-      {token ? (
-        <>
-          <div className="wallet">
-            <div className="wallet__amt">{balance.data ? formatMoney(balance.data.available) : '—'}</div>
-            <div className="wallet__label">Balance</div>
-          </div>
-          <button className="iconbtn" title="Sign out" onClick={signOut}>
-            ⏻
-          </button>
-        </>
-      ) : (
-        <button className="btn btn--primary" onClick={() => navigate('/login')}>
-          Sign in
-        </button>
+      {token && (
+        <div className="hdr__user">
+          <b>Player</b>
+          <div className="sub">Balance : {balance.data ? formatMoney(balance.data.available) : '—'} · play chips</div>
+        </div>
       )}
+      <div className="hdr__spacer" />
+      <nav className="nav">
+        <button onClick={() => navigate('/')}>HOME</button>
+        <button onClick={() => navigate('/')}>INPLAY</button>
+        {token ? <button onClick={signOut}>LOGOUT</button> : <button onClick={() => navigate('/login')}>LOGIN</button>}
+      </nav>
     </header>
   );
 }

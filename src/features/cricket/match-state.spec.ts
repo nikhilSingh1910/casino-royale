@@ -1,12 +1,12 @@
 import * as fc from 'fast-check';
 import { BallEvent } from '../../integrations/feed';
-import { deriveScore } from './match-state';
+import { deriveScore, scorecard } from './match-state';
 
-function ball(sequence: number, runsOffBat: number, extras = 0, isWicket = false): BallEvent {
+function ball(sequence: number, runsOffBat: number, extras = 0, isWicket = false, innings = 1): BallEvent {
   return {
     matchId: 'm',
     sequence,
-    innings: 1,
+    innings,
     over: Math.floor((sequence - 1) / 6),
     ballInOver: ((sequence - 1) % 6) + 1,
     runsOffBat,
@@ -42,5 +42,29 @@ describe('deriveScore (CM1, pure)', () => {
         },
       ),
     );
+  });
+});
+
+describe('scorecard (in-play strip, pure)', () => {
+  it('totals each innings and isolates the current over', () => {
+    // sequence is globally unique per match; innings 2 continues the sequence and resets the over.
+    const balls = [
+      ball(1, 4), ball(2, 1), ball(3, 0, 0, true), ball(4, 2), ball(5, 0), ball(6, 1), // innings 1, over 0
+      ball(7, 6), // innings 1, over 1
+      { ...ball(8, 3), innings: 2, over: 0 },
+      { ...ball(9, 0, 0, true), innings: 2, over: 0 },
+      { ...ball(10, 4), innings: 2, over: 0 },
+    ];
+    const sc = scorecard(balls);
+    expect(sc.innings).toEqual([
+      { innings: 1, runs: 14, wickets: 1, legalBalls: 7 },
+      { innings: 2, runs: 7, wickets: 1, legalBalls: 3 },
+    ]);
+    // current over = the latest innings' latest over (innings 2, over 0) — 3 balls
+    expect(sc.currentOver.map((b) => b.runsOffBat)).toEqual([3, 0, 4]);
+  });
+
+  it('is empty before a ball is bowled', () => {
+    expect(scorecard([])).toEqual({ innings: [], currentOver: [] });
   });
 });

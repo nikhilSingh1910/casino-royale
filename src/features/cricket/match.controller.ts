@@ -18,6 +18,13 @@ export class MatchController {
     if (!view) throw new NotFoundException('match not found');
     return serialize(view);
   }
+
+  @Get(':id/score')
+  async score(@Param('id') id: string) {
+    const s = await this.markets.getScore(id);
+    if (!s) throw new NotFoundException('match not found');
+    return s; // numbers/strings only — no bigint to serialize
+  }
 }
 
 const serialize = (v: MatchView) => ({

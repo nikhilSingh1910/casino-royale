@@ -81,6 +81,33 @@ describe('cricket HTTP API (e2e, real Postgres + Fastify) — web track', () => 
     expect((await app.inject({ method: 'GET', url: '/matches/nope' })).statusCode).toBe(404);
   });
 
+  it('GET /matches/:id/score — innings totals + current over from the ball store', async () => {
+    await seedMatch('w7');
+    const balls = [
+      { runs: 4, wicket: false },
+      { runs: 1, wicket: false },
+      { runs: 0, wicket: true },
+    ];
+    let seq = 0;
+    for (const b of balls) {
+      seq += 1;
+      await cricket.appendBall({ matchId: 'w7', sequence: seq, innings: 1, over: 0, ballInOver: seq, runsOffBat: b.runs, extras: 0, isWicket: b.wicket, isLegal: true });
+    }
+    const res = await app.inject({ method: 'GET', url: '/matches/w7/score' });
+    expect(res.statusCode).toBe(200);
+    const s = res.json() as { innings: Array<{ innings: number; team: string; runs: number; wickets: number; overs: string }>; currentOver: Array<{ runs: number; wicket: boolean }> };
+    expect(s.innings[0]).toMatchObject({ innings: 1, team: 'India', runs: 5, wickets: 1, overs: '0.3' });
+    expect(s.currentOver).toEqual([
+      { runs: 4, wicket: false },
+      { runs: 1, wicket: false },
+      { runs: 0, wicket: true },
+    ]);
+  });
+
+  it('GET /matches/unknown/score → 404', async () => {
+    expect((await app.inject({ method: 'GET', url: '/matches/nope/score' })).statusCode).toBe(404);
+  });
+
   it('POST /bets without a session → 401', async () => {
     expect((await app.inject({ method: 'POST', url: '/bets', payload: {} })).statusCode).toBe(401);
   });

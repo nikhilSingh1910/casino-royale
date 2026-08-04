@@ -104,13 +104,16 @@ and the decision log):
   userId from the session, never the body); money as integer-minor-unit strings; one global
   `DomainExceptionFilter` maps zod → 400 and typed domain errors to their 4xx (closed the deferred
   "zod→400" gap app-wide).
-- ✅ **Frontend — "modern exchange refit"** — DONE (D38; `web/`, React 18 + Vite + TS + TanStack Query +
-  React Router; web check green — typecheck · lint · 13 vitest tests · vite build). Login → lobby →
-  market view (back/lay ladder + session strip) + bet slip → live wallet, **all four UI states**, on the
-  cricket API. One float-free formatting module (§5 rule 5); no mock data (honest empty states). Run:
-  backend `pnpm start:dev`, then `cd web && pnpm dev` (Vite dev-proxies `/api` → :3000). *Deferred:*
-  prod `/api` routing (CORS or reverse-proxy — no origin yet), auto-logout on a 401, richer scorecard /
-  live push. A client screenshot would tighten visual parity (the HAR carries no CSS).
+- ✅ **Frontend — top5050 parity** — DONE (D39, re-skinned from D38's "modern refit" after the client sent
+  real screenshots). `web/` React 18 + Vite + TS; web check green — typecheck · lint · **16 vitest tests** ·
+  build. **Light + purple**, `LG`/`KH` runner ladder, grouped **Fancy** (No/Rate/Yes/Rate), the in-play
+  **score + per-ball over strip**, suspended rows — login → lobby → in-play view + bet slip → live wallet,
+  **all four UI states**. Float-free money (§5 rule 5, incl. `formatRate`); balance in € per contract §8
+  (prototype shows raw chips — flagged). Run: backend `pnpm start:dev`, then `cd web && pnpm dev`.
+- ✅ **Score endpoint** — DONE (D39). `GET /matches/:id/score` — per-innings totals + current over from a
+  pure `scorecard()` fold over `raw_ball_event`; team-per-innings by match-name convention (no toss model,
+  D37). Frontend `ScoreStrip` polls it. *Deferred:* live push (polling now), chase/target summary,
+  Min/Max + Position values, prod `/api` routing (CORS/proxy).
 - **Per-runner operator liability / exposure** — the §5-rule-11 formula is binary; multi-runner needs a
   per-runner worst case (D37). Runner auto-suspend is off until then.
 - **Per-user stake factoring** (`XC3.7`/`XC5.3`) and **timed bet-delay** (`XC3.4`).

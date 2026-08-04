@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { BetSlip } from '../components/BetSlip';
+import { FancyCard } from '../components/FancyCard';
 import { MarketCard } from '../components/MarketCard';
+import { ScoreStrip } from '../components/ScoreStrip';
 import { EmptyState, ErrorState, LoadingCards } from '../components/States';
 import type { Selection } from '../lib/types';
 
@@ -23,24 +25,29 @@ export function MatchPage() {
   const match = q.data;
   if (!match) return null;
 
+  const runnerMarkets = match.markets.filter((m) => m.type === 'match_odds' || m.type === 'bookmaker');
+  const fancyMarkets = match.markets.filter((m) => m.type === 'fancy');
+
   return (
     <>
-      <div className="card">
-        <div className="match" style={{ padding: '12px 14px' }}>
-          <div className="match__body">
-            <div className="match__name">{match.name}</div>
-            <div className="match__meta">
-              {match.competition} · {match.status}
-            </div>
-          </div>
-          {match.status === 'inplay' && <span className="badge badge--live">Live</span>}
+      <div className="mkt">
+        <div className="mkt__bar">
+          {match.name}
+          <span style={{ marginLeft: 'auto', fontWeight: 600, opacity: 0.85, fontSize: 12.5 }}>{match.competition}</span>
         </div>
       </div>
+
+      <ScoreStrip matchId={id} />
 
       {match.markets.length === 0 ? (
         <EmptyState title="No markets open" hint="Odds appear once trading opens." />
       ) : (
-        match.markets.map((mk) => <MarketCard key={mk.id} market={mk} selection={selection} onSelect={setSelection} />)
+        <>
+          {runnerMarkets.map((m) => (
+            <MarketCard key={m.id} market={m} selection={selection} onSelect={setSelection} />
+          ))}
+          <FancyCard markets={fancyMarkets} selection={selection} onSelect={setSelection} />
+        </>
       )}
 
       {selection && <BetSlip selection={selection} matchId={id} onClose={() => setSelection(null)} />}

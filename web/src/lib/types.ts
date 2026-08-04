@@ -40,6 +40,24 @@ export interface BalanceDto {
   available: string;
   reserved: string;
 }
+export interface OverBallDto {
+  runs: number;
+  wicket: boolean;
+}
+export interface InningsDto {
+  innings: number;
+  team: string | null;
+  runs: number;
+  wickets: number;
+  overs: string;
+}
+export interface ScoreDto {
+  matchId: string;
+  status: string;
+  innings: InningsDto[];
+  currentOver: OverBallDto[];
+  summary: string | null;
+}
 export interface PlacedBetDto {
   id: string;
   side: string;

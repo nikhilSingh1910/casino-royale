@@ -5,6 +5,7 @@ import { MarketStatus, MarketType } from '../../db';
 import { CricketRepo } from './cricket.repo';
 import { MarketRepo } from './market.repo';
 import { MarketRepricer } from './feed-ingest.service';
+import { scorecard } from './match-state';
 import { priceSessionRuns } from './pricing';
 
 const FANCY_WINDOWS = [6, 10] as const;
@@ -38,6 +39,24 @@ export interface MatchView {
   competition: string;
   status: string;
   markets: MarketView[];
+}
+export interface InningsView {
+  innings: number;
+  team: string | null;
+  runs: number;
+  wickets: number;
+  overs: string;
+}
+export interface OverBall {
+  runs: number;
+  wicket: boolean;
+}
+export interface ScoreView {
+  matchId: string;
+  status: string;
+  innings: InningsView[];
+  currentOver: OverBall[];
+  summary: string | null;
 }
 
 @Injectable()
@@ -120,6 +139,31 @@ export class MarketService implements MarketRepricer {
     return this.cricketRepo.listMatches(MARKETS_MAX);
   }
 
+  /** The in-play score strip: per-innings totals + the current over, folded from the raw ball store. */
+  async getScore(matchId: string): Promise<ScoreView | null> {
+    const match = await this.cricketRepo.getMatch(matchId);
+    if (!match) return null;
+    const balls = await this.cricketRepo.ballsFor(matchId, BALLS_MAX);
+    // Team-per-innings by convention (no toss data, D37): the batting order follows "TeamA v TeamB".
+    const teams = match.name.split(/\s+v\s+/i).map((t) => t.trim());
+
+    const sc = scorecard(balls);
+    const innings: InningsView[] = sc.innings.map((i) => ({
+      innings: i.innings,
+      team: teams[i.innings - 1] ?? null,
+      runs: i.runs,
+      wickets: i.wickets,
+      overs: `${Math.floor(i.legalBalls / 6)}.${i.legalBalls % 6}`,
+    }));
+    return {
+      matchId,
+      status: match.status,
+      innings,
+      currentOver: sc.currentOver.map((b) => ({ runs: b.runsOffBat + b.extras, wicket: b.isWicket })),
+      summary: summarise(innings),
+    };
+  }
+
   /** The market-view payload: a match with its markets, runners and fancy lines. One read per kind (no N+1). */
   async getMatchView(matchId: string): Promise<MatchView | null> {
     const match = await this.cricketRepo.getMatch(matchId);
@@ -154,4 +198,16 @@ export class MarketService implements MarketRepricer {
       })),
     };
   }
+}
+
+/** A simple two-innings lead — enough for the strip; not a full chase/target model (deferred). */
+function summarise(innings: InningsView[]): string | null {
+  const [a, b] = innings;
+  if (!a || !b) return null;
+  const diff = a.runs - b.runs;
+  if (diff === 0) return 'Scores level';
+  const leader = diff > 0 ? a : b;
+  const by = Math.abs(diff);
+  const who = leader.team ?? `Innings ${leader.innings}`;
+  return `${who} lead by ${by} run${by === 1 ? '' : 's'}`;
 }

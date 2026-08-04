@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estimateProfit, formatMoney, formatOdds, parseStakeToMinor } from './format';
+import { estimateProfit, formatMoney, formatOdds, formatRate, parseStakeToMinor } from './format';
 
 describe('formatMoney — minor units → fiat (§5 rule 5, float-free)', () => {
   it('formats cents as euros', () => {
@@ -22,6 +22,14 @@ describe('formatOdds — scaled integer → decimal', () => {
     expect(formatOdds('21000')).toBe('2.10');
     expect(formatOdds('19000')).toBe('1.90');
     expect(formatOdds(18500n)).toBe('1.85');
+  });
+});
+
+describe('formatRate — scaled price → profit-per-100 (the prototype Rate column)', () => {
+  it('maps decimal odds to a rate', () => {
+    expect(formatRate('19000')).toBe('90'); // 1.90 → 90
+    expect(formatRate('21000')).toBe('110'); // 2.10 → 110
+    expect(formatRate('19500')).toBe('95');
   });
 });
 

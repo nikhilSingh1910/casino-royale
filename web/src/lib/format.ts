@@ -22,6 +22,12 @@ export function formatOdds(scaled: string | bigint): string {
   return `${whole}.${hundredths.toString().padStart(2, '0')}`;
 }
 
+/** Fancy "rate" (profit per 100 staked) from a scaled price: (price − 10000) / 100. Matches the prototype's Rate column. */
+export function formatRate(scaled: string | bigint): string {
+  const n = typeof scaled === 'bigint' ? scaled : BigInt(scaled);
+  return ((n - 10000n) / 100n).toString();
+}
+
 /** Estimated profit/liability on a stake at a scaled price: stake × (odds − 1). Integer floor, float-free.
  *  An indicative figure only — the ledger's `potential_payout` on the placed bet is authoritative. */
 export function estimateProfit(stakeMinor: bigint, priceScaled: string | bigint): bigint {

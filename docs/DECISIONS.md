@@ -813,3 +813,37 @@ insufficient-funds case is pre-checked → 400); mapping `LedgerError` is a smal
 **Consequence.** The product now has a real HTTP contract a frontend (or the client) can drive, proven
 end to end through Fastify. The visual build is scoped and its direction chosen, with the parity caveat
 recorded rather than overclaimed.
+
+---
+
+### D39 — Design pivot to top5050 parity + the in-play score endpoint (supersedes D38's look)
+
+**Context.** D38 chose a "modern exchange refit" *because neither we nor the client had a rendered
+reference* (the HAR carried no CSS). The client then sent **screenshots** of the actual top5050
+in-play page — the real thing: **light theme, deep purple bars, `LG`/`KH` (Lagai/Khai = back/lay)
+blue-pink cells, a score + per-ball over strip, fancy as `No`/`Rate`/`Yes`/`Rate`, `SUSPENDED` rows.**
+Evidence beats the earlier guess (§1), and "1:1 design parity" is the standing goal, so the look
+pivots to match the prototype.
+
+**Decision.**
+1. **Re-skin `web/` to the top5050 look** — light + purple, `LG`/`KH` runner ladder, one grouped
+   **Fancy** card (`No`/`Rate`/`Yes`/`Rate`), the in-play **score strip**, suspended rows. The React
+   logic, API, and float-free money module are unchanged; only the presentation (`theme.css` + the
+   components) changed. `deriveScore`/settlement etc. untouched.
+2. **A score endpoint** — `GET /matches/:id/score` returns per-innings totals + the current over,
+   folded by a new pure `scorecard()` over `raw_ball_event` (reuses the CM1 fold discipline). The
+   frontend `ScoreStrip` polls it. **Team-per-innings is by convention** from the match name
+   (`"TeamA v TeamB"`) — there is still no toss/batting-order model (D37), so it's a labelled
+   assumption, not a claim.
+3. **Fancy `Rate` = profit-per-100** — the prototype's `Rate` (100/110/90) maps from our decimal
+   odds as `(price − 10000)/100`; one integer `formatRate` in the money module, no float.
+4. **Balance stays fiat (contract > prototype).** The prototype shows raw chips ("Free Chips: 0.76");
+   CLAUDE.md §8 binds us to **fiat display**, so the wallet shows `€x.xx` (labelled "play chips").
+   Flagged to the client; reversible if they want literal chips.
+
+**Deferred:** live score push (polling for now); a real chase/target line in the summary (simple
+two-innings lead only); per-runner `Min/Max` limits and the `Position` column values (columns are
+present, values await the exposure/limits surface); prod `/api` routing (CORS/proxy).
+
+**Consequence.** The app now reads as the client's product, and the "per-ball" view they asked for is
+real — score + over strip from the append-only ball store, on the same verified API.
