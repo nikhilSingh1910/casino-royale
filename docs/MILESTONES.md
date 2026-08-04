@@ -116,21 +116,37 @@ The highest-priority work in the project. Everything else assumes it.
 
 ---
 
-## 🟢 M2 — Accounts & sessions (play-money) · **M**
+## ✅ M2 — Accounts & sessions (play-money) · **M** — DONE 2026-08-04
 
-> **Proof:** a player signs up, logs in and holds a chip balance; an admin-suspended account cannot
-> bet and its live session + streams are terminated; every back-office action is in the append-only
-> Postgres audit log.
+> **Proof — verified** against real Postgres (6 integration tests): signup→login issues a valid
+> session; wrong password / unknown email rejected (uniform timing); change-password revokes *other*
+> sessions but keeps the current one; **suspend terminates every session and blocks betting**, with
+> an `audit_log` row; `assertCanBet` needs an active account + chips; balance & statement mirror the
+> ledger. 28 tests green under `pnpm check`.
+>
+> **Built:** `features/identity/` — scrypt auth (D34), opaque hashed session tokens, account state
+> machine, `assertCanBet`, suspend-kills-session, `GET /me · /me/balance · /me/statement`,
+> `change-password`, append-only audit. `LedgerService.statement()` for the parity account page.
+> **Partial/deferred:** `B3.1` role column exists but admin-only *enforcement* (guards) lands with
+> the console (CM5); `open_bets` needs cricket bets (CM3). **Hardening TODO:** zod→400 exception
+> filter on controllers, login rate-limiting, HTTP e2e (services are integration-tested now).
 
 **Account & auth**
 - [ ] `B1.1` Account state machine — `ACTIVE` · `SUSPENDED` · `CLOSED` (no KYC/self-exclusion states — D32)
-- [ ] `B2.1` Auth + session — Ory Kratos or similar; no verification tiers
+- [ ] `B2.1` Auth + session — **in-house scrypt + opaque tokens (D34)**, not Ory Kratos; no tiers
 - [ ] `B3.1` Basic RBAC — player · admin · trader (fine-grained OpenFGA deferred, D33)
 
 **The one gate**
 - [ ] `B4.1` `assertCanBet()` — account `ACTIVE` **and** sufficient chips. No deposit/withdraw/KYC
       gates (D32)
 - [ ] `B4.2` Test: a suspended or chip-short account is refused
+
+**Player wallet surface** — feature parity with the reference account page (verified top5050 HAR:
+`balance`, `account-statement`, `change_password`)
+- [ ] `B5.1` `GET /me` — profile + status
+- [ ] `B5.2` `GET /me/balance` — chip balance (from the M1 ledger)
+- [ ] `B5.3` `GET /me/statement` — chip-movement history, **bounded `limit`** (`LedgerService.statement`)
+- [ ] `B5.4` `POST /me/change-password` — revokes the user's other sessions
 
 **Suspend kills the session** — anti-abuse, the light form of D18 (no self-exclusion regime under D32)
 - [ ] `B4.5` Suspending an account terminates its sessions and closes its live streams

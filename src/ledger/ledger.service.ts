@@ -15,6 +15,12 @@ export interface IntegrityReport {
   sumsToZero: boolean;
   reservedMatchesOpenReservations: boolean;
 }
+export interface StatementRow {
+  account: string;
+  amount: Chips;
+  kind: string;
+  at: Date;
+}
 
 /**
  * The one authority on chips (CLAUDE.md §4, §5). The pure core (./core) decides *what* entries an
@@ -96,6 +102,19 @@ export class LedgerService {
       available: chips(await this.accountBalance(this.db, L.userChips(userId))),
       reserved: chips(await this.accountBalance(this.db, L.userReserved(userId))),
     };
+  }
+
+  /** The user's chip-movement history (newest first), bounded by `limit` (CLAUDE.md §3.3). */
+  async statement(userId: string, limit: number): Promise<StatementRow[]> {
+    const rows = await this.db
+      .selectFrom('ledger_entry as e')
+      .innerJoin('ledger_txn as t', 't.txn_id', 'e.txn_id')
+      .select(['e.account', 'e.amount', 't.kind', 'e.created_at as at'])
+      .where('e.account', 'in', [L.userChips(userId), L.userReserved(userId)])
+      .orderBy('e.id', 'desc')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({ account: r.account, amount: chips(r.amount), kind: r.kind, at: r.at }));
   }
 
   /** A5.1 — the two invariants, checked against the live database. */

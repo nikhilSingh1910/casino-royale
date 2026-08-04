@@ -28,8 +28,42 @@ export interface ChipReservationTable {
   closed_at: ColumnType<Date | null, never, Date>;
 }
 
+/** A player account (M2). Self-service signup — no agent-issued IDs (D1), no KYC (D32). */
+export interface AppUserTable {
+  id: Generated<string>;
+  email: string;
+  password_hash: string;
+  status: ColumnType<'active' | 'suspended' | 'closed', 'active' | 'suspended' | 'closed' | undefined, 'active' | 'suspended' | 'closed'>;
+  role: ColumnType<'player' | 'admin' | 'trader', 'player' | 'admin' | 'trader' | undefined, 'player' | 'admin' | 'trader'>;
+  created_at: Generated<Date>;
+  password_changed_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+/** A session. The token is stored as its SHA-256, so a DB leak yields nothing usable (D34). */
+export interface UserSessionTable {
+  id: Generated<string>;
+  user_id: string;
+  token_hash: string;
+  expires_at: Date;
+  created_at: Generated<Date>;
+  revoked_at: ColumnType<Date | null, never, Date>;
+}
+
+/** Append-only back-office / security audit (D33 — Postgres, not immudb). */
+export interface AuditLogTable {
+  id: Generated<string>;
+  actor: string;
+  action: string;
+  subject: ColumnType<string | null, string | null, never>;
+  detail: ColumnType<unknown, string | null, never>;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   ledger_entry: LedgerEntryTable;
   ledger_txn: LedgerTxnTable;
   chip_reservation: ChipReservationTable;
+  app_user: AppUserTable;
+  user_session: UserSessionTable;
+  audit_log: AuditLogTable;
 }

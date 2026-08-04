@@ -642,3 +642,22 @@ D28 (reserve chips) and D29 (no overspend) hold as ordinary in-transaction logic
 D31 (chargebacks) are moot/void. Double-entry discipline is retained as a Postgres table (the chip
 ledger is still the only authority on chips, still balanced, still append-only). `ARCHITECTURE.md`
 §2/§12's two-store design is retained as the real-money reference, superseded for Phase 1.
+
+---
+
+### D34 — In-house session auth (scrypt), not Ory Kratos (M2, play-money)
+
+**Context.** M2 needs accounts + sessions. The earlier note said "Ory Kratos or similar." For a
+play-money game (no real money, no payments, minimal PII — D32) a full external identity service is
+over-weight, and D33's trim philosophy applies.
+
+**Decision.** In-house session auth: **Node-core `crypto.scrypt`** for password hashing (per-user
+salt, `timingSafeEqual` compare — no native dependency); **opaque 256-bit session tokens** stored as
+their SHA-256 in a `user_session` table with expiry; httpOnly cookie transport. Suspend revokes all
+of a user's sessions; a password change revokes the others. Account states `ACTIVE · SUSPENDED ·
+CLOSED`.
+
+**Consequence.** Light, transparent, verifiable, no external service. **This is play-money-grade
+auth** — adequate because there is no real money, PII-heavy data, or payment surface (D32). A future
+real-money pivot must add a proper security review and likely MFA/email-verification (all deferred
+now as over-build). Rolling auth is a known footgun; the mitigations above are deliberately standard.

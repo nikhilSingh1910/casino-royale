@@ -39,5 +39,32 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS chip_reservation_open_idx
       ON chip_reservation (user_id) WHERE status = 'open';
+
+    CREATE TABLE IF NOT EXISTS app_user (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      email text NOT NULL UNIQUE,
+      password_hash text NOT NULL,
+      status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'closed')),
+      role text NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'admin', 'trader')),
+      created_at timestamptz NOT NULL DEFAULT now(),
+      password_changed_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS user_session (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES app_user(id),
+      token_hash text NOT NULL UNIQUE,
+      expires_at timestamptz NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      revoked_at timestamptz
+    );
+    CREATE INDEX IF NOT EXISTS user_session_user_idx ON user_session (user_id);
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      actor text NOT NULL,
+      action text NOT NULL,
+      subject text,
+      detail jsonb,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
   `.execute(db);
 }
