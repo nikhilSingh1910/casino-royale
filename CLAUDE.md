@@ -398,35 +398,36 @@ a test that fails if one appears.
 
 ## 7. WHERE THINGS LIVE
 
+**Stack (M0):** NestJS (Fastify adapter) · Kysely + Postgres · zod (config) · pino · Jest · ESLint +
+dependency-cruiser. Play-money cricket, trimmed per D33.
+
 ```
 src/
-  app/                      routes only — thin, declarative
-    (public)/               marketing, registration
-    (account)/              wallet, history, limits, verification
-    (betting)/              exchange, sportsbook, casino
-    (backoffice)/           trading, compliance, support consoles
-    api/                    webhooks + provider callbacks
-  features/<domain>/        api.ts · service.ts · repo.ts · schema.ts · components/
-    identity/               registration, KYC, account state
-    wallet/                 deposits, withdrawals, balances
-    exchange/               order book, matching, exposure
-    sportsbook/             fixed-odds markets, bet placement, cash-out
-    casino/                 lobby, seamless wallet
-    settlement/             result ingestion, settlement, voids
-    compliance/             RG, limits, self-exclusion, AML alerts
-    affiliates/             attribution, revenue share
-  ledger/                   the only path to money — client, entries, reconciliation
-  integrations/             feed · aggregator · psp · kyc · registers · reporting
+  main.ts                   bootstrap (Nest + Fastify + pino + shutdown hooks)
+  app.module.ts             composition root — imports the feature modules
+  health/                   /health controller + module
+  features/<domain>/        <domain>.module · .controller · .service · .repo · schema · index.ts
+    identity/               accounts & sessions (M2)
+    cricket/                markets · betting · settlement (CM1–CM4)
+    trading/                operator console + risk (CM5)
+  ledger/                   the ONLY authority on chips — double-entry, Postgres (M1). Barrel-only.
+  integrations/
+    feed/                   cricket ball-by-ball adapter (interface + fixtures/cricbuzz)
   shared/
-    money/                  integer money type, arithmetic, formatting
-    odds/                   the ladder — ticks, increments, validation
-    jurisdiction/           per-market config resolution
-    ui/                     the design system — sanctioned components only
-    config.ts               the only file that reads process.env
-  jobs/                     queue runner + handlers
-docs/                       STATE · PLAN · DECISIONS · ARCHITECTURE · OPERATIONS
-PRD.md                      the product specification
+    money/                  Chips = integer (bigint), arithmetic, formatting. No floats.
+    odds/                   scaled-integer prices (operator-priced; no exchange ladder)
+    config/                 the ONLY reader of process.env — zod-parsed at boot
+  jobs/                     settlement job queue (pg-boss)
+  db/                       Kysely connection + migrations (M1)
+tools/ · eslint-local-rules.js   custom money guardrails (no-float-in-money, bounded-list-return)
+test/                       cross-cutting specs (guardrail meta-test C6.4); unit specs sit beside code
+.dependency-cruiser.cjs     layer + boundary rules (C1.2/C1.3/C6.3)
+docs/                       STATE · PLAN · DECISIONS · ARCHITECTURE · MILESTONES · CRICKET-MVP
+PRD.md                      the (real-money) product spec — reference; D32/D33 govern current scope
 ```
+
+Cross-feature access goes through a feature's `index.ts`; nothing outside `ledger/` reaches past its
+barrel. Both enforced by `pnpm lint:boundaries`.
 
 ---
 

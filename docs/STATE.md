@@ -21,7 +21,7 @@ just don't convert to money.
 
 ## Phase
 
-**Phase 0/1 — foundations + cricket engine. No code written yet.**
+**Phase 0/1 — foundations + cricket engine. M0 (scaffold) DONE; M1 (chip ledger) next.**
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log
@@ -64,8 +64,8 @@ immudb, Temporal, Hyperswitch, OpenSanctions. Deferred: ClickHouse, Kafka. No ma
 Follow the **finalized build order** in `docs/CRICKET-MVP.md` — M0 → M1 → M2 → CM1…CM6, nine
 milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
 
-1. **M0 — scaffold** (`docs/MILESTONES.md`): repo, layer-boundary lint, config-at-boot, CI rules.
-   Nothing gates it. **This is the first task.**
+1. ✅ **M0 — scaffold** — DONE. NestJS (Fastify) + Kysely + Postgres; boundary lint, config-at-boot,
+   money guardrails, all verified (`pnpm check` green, 9 tests). **M1 is now the current task.**
 2. **M1 — chip ledger**: Postgres double-entry, reserve/settle in one transaction (D28/D33).
 3. **M2 — accounts & sessions**, then **CM1→CM6** (the cricket engine). CM6 is the playable product.
 

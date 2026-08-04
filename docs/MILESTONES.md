@@ -36,23 +36,23 @@ M1, M2 and M3 run largely in parallel once M0 lands.
 
 ---
 
-## 🟢 M0 — Scaffold stands up · **S**
+## ✅ M0 — Scaffold stands up · **S** — DONE 2026-08-04
 
 > **Proof:** a deliberately rule-violating PR fails CI for each automated rule. Boot fails loudly
-> on a missing env key.
+> on a missing env key. **Verified:** `pnpm check` green (typecheck · lint · boundaries · 9 tests);
+> the boundary lint rejected a real cross-feature violation; ConfigService throws on a missing
+> `DATABASE_URL`.
 
-**Blocked on:** D6 confirmation (runtime choice) — the only thing that must be settled first.
-
-- [ ] Confirm or overrule **D6** (TypeScript platform, matching engine behind an interface)
-- [ ] `C1.1` Repo structure per `CLAUDE.md` §7
-- [ ] `C1.2` `dependency-cruiser` rules enforcing layer boundaries (§3.3)
-- [ ] `C1.3` Rule: nothing outside `ledger/` imports the ledger client
-- [ ] `C2.1` Single config file, zod-parsed at boot; lint-ban `process.env` elsewhere
-- [ ] `C5.1` OpenTelemetry, Prometheus, Grafana baseline
-- [ ] `C6.1` CI: no float in money paths
-- [ ] `C6.2` CI: every list-returning function takes a bounded limit
-- [ ] `C6.3` CI: no second implementation of a §5 single-owner rule
-- [ ] `C6.4` Write one deliberately violating PR per rule; confirm each fails
+- [x] **D6** confirmed (D27) — TypeScript. Stack chosen: **NestJS (Fastify) + Kysely + Postgres**.
+- [x] `C1.1` Repo structure per `CLAUDE.md` §7 (updated to the NestJS trimmed tree)
+- [x] `C1.2` `dependency-cruiser` — layer boundaries (`.dependency-cruiser.cjs`)
+- [x] `C1.3` `ledger-barrel-only` rule — nothing outside `ledger/` reaches past its barrel
+- [x] `C2.1` `src/shared/config` — zod-parsed at boot; `no-restricted-properties` bans `process.env` elsewhere
+- [~] `C5.1` **Trimmed (D33):** pino structured logging + `/health`. Full OTel/Prometheus/Grafana deferred (over-build for the MVP)
+- [x] `C6.1` custom ESLint rule `no-float-in-money` (money/ledger dirs)
+- [~] `C6.2` `bounded-list-return` — heuristic, `warn` for now (per the M0 adversarial review; promote to `error` once proven non-flaky)
+- [~] `C6.3` set up via dep-cruiser; the single-owner *symbol* check activates as those functions land (they don't exist yet)
+- [x] `C6.4` guardrail meta-test (`test/guardrails.spec.ts`, RuleTester) + a demonstrated boundary-violation failure
 
 ---
 
