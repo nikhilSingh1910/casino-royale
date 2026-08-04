@@ -56,7 +56,7 @@ M1, M2 and M3 run largely in parallel once M0 lands.
 
 ---
 
-## 🟢 M1 — Money is provably correct · **XL**
+## 🟢 M1 — Chip ledger is provably correct · **L**
 
 > **Proof:** property tests pass — the chip ledger always balances (every entry a balanced
 > debit/credit pair); **no bet path drives a balance negative**; `available + reserved` accounts for
@@ -107,75 +107,50 @@ The highest-priority work in the project. Everything else assumes it.
 
 ---
 
-## 🟢 M2 — Identity and gates fail closed · **L**
+## 🟢 M2 — Accounts & sessions (play-money) · **M**
 
-> **Proof:** gates provably refuse on provider **timeout** and provider **error**, not only on a
-> negative response. Self-exclusion reversal is absent from the API surface — demonstrated by
-> attempting to call it.
+> **Proof:** a player signs up, logs in and holds a chip balance; an admin-suspended account cannot
+> bet and its live session + streams are terminated; every back-office action is in the append-only
+> Postgres audit log.
 
-**Account [B1, B2, B3]**
-- [ ] `B1.1` Account state machine — `ACTIVE` · `PENDING_VERIFICATION` · `LIMITED` ·
-      `SELF_EXCLUDED` · `COOLING_OFF` · `SUSPENDED` · `CLOSED`
-- [ ] `B1.2` Property test: no transition exits `SELF_EXCLUDED` before term
-- [ ] `B2.1` Auth + session — Ory Kratos or Keycloak, OIDC
-- [ ] `B3.1` OpenFGA policy model
-- [ ] `B3.2` Segregation of duties expressed once: balance-adjuster ≠ approver
+**Account & auth**
+- [ ] `B1.1` Account state machine — `ACTIVE` · `SUSPENDED` · `CLOSED` (no KYC/self-exclusion states — D32)
+- [ ] `B2.1` Auth + session — Ory Kratos or similar; no verification tiers
+- [ ] `B3.1` Basic RBAC — player · admin · trader (fine-grained OpenFGA deferred, D33)
 
-**Gates [B4]**
-- [ ] `B4.1` `assertCanWager()` · `assertCanDeposit()` · `assertCanWithdraw()` — one each (§5.8)
-- [ ] `B4.2` Fail-closed semantics: cache miss + provider unavailable = block
-- [ ] `B4.3` Stub providers with injectable timeout/error for testing
-- [ ] `B4.4` Test each gate against timeout, error, and negative response separately
+**The one gate**
+- [ ] `B4.1` `assertCanBet()` — account `ACTIVE` **and** sufficient chips. No deposit/withdraw/KYC
+      gates (D32)
+- [ ] `B4.2` Test: a suspended or chip-short account is refused
 
-**Revocation [D18]** — the adversarial-review catch; easy to miss because request-scoped tests pass
-- [ ] `B4.5` Revocation event channel on compliance state change
-- [ ] `B4.6` Terminate sessions on revocation
-- [ ] `B4.7` Close live streams on revocation
-- [ ] `B4.8` Cancel or freeze resting orders per reason code
-- [ ] `B4.9` Test: self-exclusion mid-session kills an active WebSocket
+**Suspend kills the session** — anti-abuse, the light form of D18 (no self-exclusion regime under D32)
+- [ ] `B4.5` Suspending an account terminates its sessions and closes its live streams
+- [ ] `B4.6` Test: admin-suspend mid-session kills the active WebSocket
 
-**Audit [C4]**
-- [ ] `C4.1` immudb deployed
+**Audit [C4]** — append-only **Postgres** (D33), not immudb
 - [ ] `C4.2` Back-office action wrapper — built **before** any console, so none can skip it
 - [ ] `C4.3` Records named operator, timestamp, before/after state
 
 ---
 
-## 🟢 M3 — Germany expressible as pure config · **M**
+## ~~M3 — Germany expressible as pure config~~ — **CUT under D32**
 
-> **Proof:** the full German ruleset encoded with **zero code changes** — the **tiered** slot stake
-> rule (€1 baseline · €3 at 21+ · €5 after a 90-day clean period, **gated on a per-operator GGL
-> approval flag**), 5-second minimum spin, no live casino under the sportsbook licence, in-play
-> restricted to next-goal/final-result, cross-operator deposit cap.
+Jurisdiction legality is moot for play-money, so this milestone is dropped. Its one useful piece —
+**operator game-config** (enable/disable market types, chip stake limits, bet delays) — lives in
+**CM2** (`XC2.4`), reframed from "jurisdiction legality" to "operator settings". The original
+real-money jurisdiction-config plan is preserved in git history.
 
-Germany is the stress test, not a target market (D13). If it needs a code path, the config model
-is wrong and gets redesigned **now**.
-
-> **Corrected 2026-08-04.** This proof previously specified a flat "€1 max slot stake", superseded
-> in July 2026 (`PRD.md` §10.3). Testing the config model against a constant would have passed the
-> gate while validating the wrong thing — then declared the model sound for every subsequent
-> jurisdiction. The tiered rule needs **four** dimensions: operator approval flag, age band,
-> rolling 90-day behavioural qualification, and the baseline. That is the test worth passing.
->
-> **Two consequences beyond config.** The behavioural qualification cannot be evaluated per spin
-> inside the casino callback path, so it implies a **precomputed player-tier projection**
-> (recalculated out-of-band; decreases applied immediately via the D18 revocation channel,
-> increases on the scheduled recalculation). And the cross-operator deposit cap requires a
-> **real-time LUGAS query per deposit** — it is not expressible as config alone, and LUGAS is
-> currently mis-filed under "Regulatory reporting" in `PRD.md` §13.1. Both are unresolved.
-
-- [ ] `WD1.1` Config schema — permitted market types, stake/spin limits, RG defaults, KYC timing,
-      bonus rules, reporting obligations
-- [ ] `WD2.1` `resolveJurisdiction(user)` — from verified residence, not IP (§5.7)
-- [ ] `WD2.2` Config accessor; lint-ban country-code branching in features
-- [ ] `WD3.1` Encode DE ruleset as a fixture
-- [ ] `WD3.2` Encode one plausible target-market ruleset as a second fixture
-- [ ] `WD3.3` Verify: adding the second required no code change
-
-### ✅ Phase 0 gate
-M0–M3 proofs all green. **This is the point at which Phase 1 can be estimated honestly.**
+### ✅ Foundation gate
+**M0, M1, M2 proofs green** — scaffold, chip ledger and accounts are ready. The cricket engine
+(CM1–CM6, `docs/CRICKET-MVP.md`) builds on them, and CM6 is a playable product.
 
 ---
+
+# ══════════ ARCHIVE — real-money plan, OUT OF SCOPE under D32 ══════════
+
+> Everything below (M4–M15: sportsbook, casino, exchange, real-money compliance) is the **original
+> licensed real-money plan**, retained as reference and for any future pivot. **It is not part of
+> the play-money cricket build** — the active worklist is M0–M2 + CM1–CM6 (see `docs/CRICKET-MVP.md`).
 
 # PHASE 1 — Sportsbook + Casino
 

@@ -55,6 +55,31 @@ be desirable UX, but they are not the statutory RG regime.
 
 ---
 
+## Build order — the finalized worklist
+
+The complete, ordered sequence for the play-money cricket game. Each milestone ends in a
+demonstrable proof; **run the loop (`CLAUDE.md` §2) per milestone.** Foundation milestones (M0–M2)
+are in `docs/MILESTONES.md`; the cricket engine (CM1–CM6) is §5 below.
+
+| # | Milestone | Ends when |
+|---|---|---|
+| 1 | **M0 — Scaffold** | a rule-violating PR fails CI; boot fails on a missing env key |
+| 2 | **M1 — Chip ledger** | property tests green; ledger balances; no bet drives a balance negative (Postgres, one transaction) |
+| 3 | **M2 — Accounts & sessions** | signup/login + chip balance; suspend kills the session; actions audited |
+| 4 | **CM1 — Feed live** | ball-by-ball stream stored + replayable; feed-down suspends, no fabricated prices |
+| 5 | **CM2 — Markets + config** | all three market groups show and reprice live; markets enable/limit via config |
+| 6 | **CM3 — Placement + risk** | a bet reserves chips in one transaction; caps auto-suspend; locks reject; exposure agrees |
+| 7 | **CM4 — In-play settlement** | session market settles from stored ball events; resettle via compensating entries |
+| 8 | **CM5 — Trading console** | suspend/lock/void/resettle, all audited; integrity flags surface |
+| 9 | **CM6 — End-to-end** | player with chips → bets across all groups → settlement → correct balance. **Playable product** |
+
+**Out of scope** (real-money reference only): M3 (jurisdiction — cut), M4–M15
+(sportsbook/casino/exchange/compliance), the true exchange, the casino.
+
+**First task for the loop: M0.**
+
+---
+
 ## 1. Mapping to the existing docs
 
 **Reused unchanged** — the cricket MVP builds *on top of* these, it does not re-spec them:

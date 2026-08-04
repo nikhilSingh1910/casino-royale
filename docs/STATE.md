@@ -61,12 +61,13 @@ immudb, Temporal, Hyperswitch, OpenSanctions. Deferred: ClickHouse, Kafka. No ma
 
 ## Next actions
 
-1. **Begin M0 — scaffold** (`docs/MILESTONES.md`): repo structure, layer-boundary lint,
-   config-at-boot, CI rules. Nothing gates it.
-2. **M1 — chip ledger**: the Postgres double-entry table (D33), reserve/settle in one transaction
-   (D28). No TigerBeetle, no sweeper.
-3. **Cricket engine (CM1→CM6)** on `docs/CRICKET-MVP.md` — feed → markets → placement → settlement.
-   This *is* the path to a playable product; no real-money track to run alongside.
+Follow the **finalized build order** in `docs/CRICKET-MVP.md` — M0 → M1 → M2 → CM1…CM6, nine
+milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
+
+1. **M0 — scaffold** (`docs/MILESTONES.md`): repo, layer-boundary lint, config-at-boot, CI rules.
+   Nothing gates it. **This is the first task.**
+2. **M1 — chip ledger**: Postgres double-entry, reserve/settle in one transaction (D28/D33).
+3. **M2 — accounts & sessions**, then **CM1→CM6** (the cricket engine). CM6 is the playable product.
 
 ## Notes
 
