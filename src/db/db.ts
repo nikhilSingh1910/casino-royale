@@ -128,5 +128,23 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
            ('bookmaker', true, 50000, 2, 0),
            ('fancy', true, 25000, 2, 100000)
     ON CONFLICT (market_type) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS bet (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      idempotency_key text NOT NULL UNIQUE,
+      user_id uuid NOT NULL REFERENCES app_user(id),
+      market_id uuid NOT NULL REFERENCES market(id),
+      match_id text NOT NULL REFERENCES cricket_match(match_id),
+      reservation_id text NOT NULL,
+      side text NOT NULL CHECK (side IN ('back', 'lay')),
+      line_value int NOT NULL,
+      price bigint NOT NULL,
+      stake bigint NOT NULL,
+      reserved bigint NOT NULL,
+      potential_payout bigint NOT NULL,
+      status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'won', 'lost', 'void')),
+      placed_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS bet_market_open_idx ON bet (market_id) WHERE status = 'open';
   `.execute(db);
 }

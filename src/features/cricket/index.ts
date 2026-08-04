@@ -7,3 +7,7 @@ export { deriveScore, runsInOvers } from './match-state';
 export type { MatchScore } from './match-state';
 export { priceSessionRuns } from './pricing';
 export type { FancyQuote } from './pricing';
+export { PlacementService, BetRejectedError } from './placement.service';
+export type { PlaceBetInput } from './placement.service';
+export { calculateCustomerExposure, calculateOperatorLiability } from './exposure';
+export type { BetPosition } from './exposure';

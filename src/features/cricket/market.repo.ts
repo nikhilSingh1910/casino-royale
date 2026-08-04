@@ -109,4 +109,23 @@ export class MarketRepo {
   async setMaxStake(type: MarketType, maxStake: bigint): Promise<void> {
     await this.db.updateTable('market_config').set({ max_stake: maxStake }).where('market_type', '=', type).execute();
   }
+
+  async getMarketWithFancy(marketId: string) {
+    const m = await this.db
+      .selectFrom('market')
+      .select(['id', 'match_id', 'market_type', 'status'])
+      .where('id', '=', marketId)
+      .executeTakeFirst();
+    if (!m) return undefined;
+    const fancy = await this.db
+      .selectFrom('fancy_market')
+      .select(['line_value', 'back_price', 'lay_price'])
+      .where('market_id', '=', marketId)
+      .executeTakeFirst();
+    return { ...m, fancy: fancy ?? null };
+  }
+
+  async setStatusForMarket(marketId: string, status: MarketStatus): Promise<void> {
+    await this.db.updateTable('market').set({ status }).where('id', '=', marketId).execute();
+  }
 }

@@ -318,7 +318,7 @@ ticks.
 > *mechanic*. **Deferred:** operator price-setting UI for match-odds/bookmaker (`setRunner` exists;
 > admin surface → CM5); `bet_delay`/`session_threshold` config apply at placement (CM3).
 
-### CM3 — A bet placed against live funds, with the book protected · **XL**
+### ✅ CM3 — A bet placed against live funds, with the book protected · **XL** — DONE 2026-08-04
 > **Proof:** a fancy bet is placed against a live line and the **full stake reserves** in the ledger;
 > a market breaching its liability cap **auto-suspends**; a locked market rejects bets; a moved line
 > rejects on price-check; `calculateCustomerExposure()` on the bet slip agrees with the risk console.
@@ -327,6 +327,26 @@ ticks.
 (§2.2) · `XC3.3` `calculateCustomerExposure()` + `calculateOperatorLiability()` · `XC3.4` bet delay ·
 `XC3.5` `FancyBetLock` / `FancySectionLock` · `XC3.6` per-market liability cap + auto-suspend ·
 `XC3.7` per-user stake factoring · idempotent by placement key.
+
+> **DONE — verified** (54 tests green, real Postgres). `PlacementService.placeBet` reserves the
+> **full stake** through the M1 ledger under the *same* idempotency key as the bet row — a 1 000-chip
+> user placing 100 splits to **900 available / 100 reserved** (`XC3.2`). A **moved line or price**
+> rejects on the two-phase check (`XC3.1`); a **suspended market** rejects (`XC3.5`, market-level);
+> a **liability-cap breach auto-suspends** the market (`XC3.6` — 5×25 000 @1.95 → 118 750 liability
+> > 100 000 cap → market locks → the next bet is rejected); placement is **idempotent by key** and
+> **heals a crash between reserve and bet-create** — a *deterministic* `reservationId` (`bet:<key>`)
+> means a retry re-reserves nothing and the bet still references the real `chip_reservation` row.
+> `calculateCustomerExposure()` / `calculateOperatorLiability()` are the single-owner risk functions
+> (`XC3.3`, CLAUDE.md §5 rules 2 & 11 — customer risks the *stake*, book risks the *payout*, proven
+> distinct); slip exposure agrees with reserved chips. Overdraft is impossible: `core.apply` rejects
+> any player account going negative atomically under the per-user `pg_advisory_xact_lock`.
+>
+> **Deferred — not built, do not claim as done:** timed **bet delay** (`XC3.4` — `bet_delay_seconds`
+> is stored in config but not yet enforced as a delay window); **per-user stake factoring** (`XC3.7`
+> — only a global `max_stake` gate exists); **fancy section-level** locks (`XC3.5` — only whole-market
+> suspend). Runner-based **match-odds/bookmaker placement** is a follow-up — CM3 targets the
+> fancy/session product (the HAR's core). The **reserve + bet-insert atomicity saga** (today a crash
+> leaves a reservation a retry heals, rather than one transaction spanning both) stays a hardening item.
 
 ### CM4 — In-play settlement, replayable · **XL**
 > **Proof:** a session market settles correctly at over-block completion **from stored ball events**;

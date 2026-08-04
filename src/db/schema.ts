@@ -125,6 +125,27 @@ export interface MarketConfigTable {
   session_threshold: ColumnType<bigint, bigint, bigint>;
 }
 
+export type BetSide = 'back' | 'lay';
+export type BetStatus = 'open' | 'won' | 'lost' | 'void';
+
+/** A placed bet (CM3). Idempotent by placement key; references its ledger reservation. */
+export interface BetTable {
+  id: Generated<string>;
+  idempotency_key: string;
+  user_id: string;
+  market_id: string;
+  match_id: string;
+  reservation_id: string;
+  side: BetSide;
+  line_value: number;
+  price: ColumnType<bigint, bigint, bigint>;
+  stake: ColumnType<bigint, bigint, bigint>;
+  reserved: ColumnType<bigint, bigint, bigint>;
+  potential_payout: ColumnType<bigint, bigint, bigint>;
+  status: ColumnType<BetStatus, BetStatus | undefined, BetStatus>;
+  placed_at: Generated<Date>;
+}
+
 export interface Database {
   ledger_entry: LedgerEntryTable;
   ledger_txn: LedgerTxnTable;
@@ -138,4 +159,5 @@ export interface Database {
   market_runner: MarketRunnerTable;
   fancy_market: FancyMarketTable;
   market_config: MarketConfigTable;
+  bet: BetTable;
 }
