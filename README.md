@@ -18,7 +18,8 @@ the build plan.
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System shape, the money seam, failure modes, and **§12 — architectural decisions still open** |
 | [`docs/PLAN.md`](docs/PLAN.md) | Build sequence by workstream and phase |
 | [`docs/MILESTONES.md`](docs/MILESTONES.md) | 16 milestones (M0–M15), each ending in a demonstrable proof |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D23, append-only. Authoritative on *why* |
+| **[`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md)** | **The active track.** Cricket-only Phase 1 — plan, architecture, CM-series milestones |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D25, append-only. Authoritative on *why* |
 | [`docs/REVIEW-FINDINGS.md`](docs/REVIEW-FINDINGS.md) | Output of the 2026-08-04 adversarial review — 142 findings and their disposition |
 
 ---
@@ -26,6 +27,10 @@ the build plan.
 ## Current status
 
 **Phase 0 — licensing and foundations. No code written.**
+
+**Active near-term scope: cricket-only MVP** ([`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md)) — an
+operator-priced cricket sportsbook on the shared money/identity core. The casino and the true
+exchange are deferred (D24, D25).
 
 Blocking:
 

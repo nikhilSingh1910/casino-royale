@@ -423,3 +423,50 @@ the casino callback path (needs a precomputed player-tier projection, item 7), a
 cross-operator deposit cap needs a real-time LUGAS query per deposit, which is currently mis-filed
 under "Regulatory reporting" in `PRD.md` §13.1.
 
+
+---
+
+### D24 — Phase 1 is cricket-only; casino and the exchange are deferred
+
+**Context.** The client narrowed the first build to the cricket product that the reference platform
+`client.top5050.in` runs (relayed 2026-08-04), answering `PRD.md` §16 Q3.
+
+**Decision.** Phase 1 ships **cricket betting only**. The casino (general M9) and all non-cricket
+sports are deferred; the true betting **exchange** is deferred to Phase 2 unchanged (D11).
+
+**This supersedes D3's blanket exclusion of fancy/session/toss markets** — already narrowed by D21
+to "a reversible commercial choice per market, not settled law." The reversal is now explicit for
+cricket: **Tech builds every fancy/session market type as a config-gated capability that defaults
+off; the client enables each per its licensed market** (D25 mechanics, Appendix A.5 ownership). D3's
+underlying integrity concern is not dismissed — it is answered by *building the controls* (liability
+caps, bet-locks, delays, integrity flags: `docs/CRICKET-MVP.md` §2.6, CM3, CM5), which the reference
+platforms expose and a licensed book needs regardless.
+
+**Consequence.** A single-sport, single-engine MVP. Much smaller than the three-engine platform, and
+it front-loads the sport with the most jurisdiction-sensitive market types (fancy/session) — a
+client/compliance concern, not a Tech one. Full execution spec in `docs/CRICKET-MVP.md`. Real-money
+launch still requires KYC (M5), RG (M6) and payments (M7); those run in parallel and are not removed
+by narrowing scope.
+
+---
+
+### D25 — The cricket MVP is operator-priced, which sidesteps the exchange's hardest problems
+
+**Context.** The reference sites present cricket match-odds as a Betfair-style exchange, but that is
+a pass-through to Betfair's liquidity — not licensable to resell in the EEA — and the bookmaker and
+fancy markets, which are the bulk of cricket volume, are already **operator-priced** (the operator
+is the counterparty).
+
+**Decision.** Build the cricket MVP as a **fixed-odds sportsbook**: the operator prices and books
+every cricket market, including match-odds. No order book, no matching, no resale of Betfair
+liquidity.
+
+**Consequence — three problems avoided, three that remain.**
+Avoided: (1) the exchange liquidity bootstrap (D11) — no market-maker needed; (2) the partial-fill
+reservation failure (D19, §12 item 1) — operator-priced bets reserve a **fixed, known amount at
+placement** (`stake` for a back, `(odds−1)×stake` for a lay) as one posted transfer `cash→reserved`,
+with nothing to partially post; (3) order-book matching entirely.
+Still required and unchanged: §12 items **2** (sync money paths — a bet cannot be accepted unfunded),
+**3(a)** (currency in the account scheme) and **8** (chargebacks). The cricket book also carries
+**operator risk** on the highest-integrity-risk markets in sport, so the risk console and integrity
+monitoring (`docs/CRICKET-MVP.md` §2.6, CM5) ship early rather than late.

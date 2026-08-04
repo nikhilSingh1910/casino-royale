@@ -4,6 +4,11 @@ Build sequence. `PRD.md` says what; this says in what order and gated on what.
 
 Every workstream item runs the loop (`CLAUDE.md` §2) and ends against the checklist (§6).
 
+> **This is the general, multi-engine plan.** The **active near-term track is cricket-only** —
+> `docs/CRICKET-MVP.md`, which reuses Phase 0 (A–D) and M5–M7 and defers the casino and the true
+> exchange (D24, D25). Read that for what is actually being built first; read this for the full
+> shape it slots into.
+
 > **ID convention.** `D<n>` is always a **decision** (`docs/DECISIONS.md`). `M<n>` is always a
 > **milestone** (`docs/MILESTONES.md`). Workstream items are lettered by workstream (`A1`, `B4`,
 > `C6`…) — except the two that would collide, which carry a `W` prefix: **`WD<n>`** (jurisdiction
@@ -145,7 +150,7 @@ audit wrapper right.
 | F | **RG suite** — limits, reality checks, time-out, self-exclusion, national register integration, behavioural risk model | B, D, E | Launch blocker, not a feature. Marketing suppression wires to RG state at platform level, never in the CRM |
 | G | **Payments** — Hyperswitch, PSP onboarding, deposit/withdrawal, return-to-source, manual review threshold | A, E, F | D7. Multi-PSP from day one; never single-source |
 | H | **Feed integration** — fixtures, prices, live data, results | C | Primary cost centre. Adapter behind an interface |
-| I | **Sportsbook** — markets, two-phase placement, bet lifecycle, cash-out, risk limits, stake factoring | A, D, H | No fancy/session/toss markets (D3) |
+| I | **Sportsbook** — markets, two-phase placement, bet lifecycle, cash-out, risk limits, stake factoring | A, D, H | Market types are jurisdiction config. Fancy/session/toss are built as config-gated capabilities, default off, client-enabled per market (D21, **D24**) — the earlier blanket "no fancy" is superseded |
 | J | **Casino** — aggregator, seamless wallet, lobby, RTP display | A, D | Callbacks idempotent by transaction ID — duplicates are routine (D10) |
 | K | **Settlement** — result ingestion, resolver, voids, dual-auth override | A, H, I, J | Append-only and replayable. Raw results stored |
 | L | **Back-office** — trading, compliance, support consoles | C4, all | Every action through the audit wrapper |

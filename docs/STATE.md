@@ -11,12 +11,17 @@ Last updated: **2026-08-04**
 **Phase 0 — Licensing & foundations. No code written.**
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
-`docs/REVIEW-FINDINGS.md`, and the decision log (**D1–D23**, append-only).
+`docs/CRICKET-MVP.md`, `docs/REVIEW-FINDINGS.md`, and the decision log (**D1–D25**, append-only).
 
 A multi-agent adversarial review ran on **2026-08-04** — 142 findings, compiled in
 `docs/REVIEW-FINDINGS.md`, with a primary-source verification log at §8b.
 **Documentation and factual corrections have been applied. The architectural decisions it
 surfaced have not** — see `docs/ARCHITECTURE.md` §12.
+
+> **Active track: CRICKET-ONLY MVP.** The client narrowed Phase 1 to the cricket product
+> (2026-08-04 — D24, D25). The near-term execution spec is **`docs/CRICKET-MVP.md`** — plan,
+> architecture and the CM-series milestones. It builds on the shared core (M0–M3, M5–M7);
+> the casino and the true exchange are deferred.
 
 > **ID convention.** `B<n>` in the blocker table below is a **blocker**. `B<n>` in `docs/PLAN.md`
 > and `docs/MILESTONES.md` is an **identity-core workstream item**. They are unrelated.
@@ -67,6 +72,11 @@ the sense that matters: none needs to know *which* regulator before starting.
    before any estimate is given — `PRD.md` Appendix A.1 explains why.
 4. Then **M0 → M1** (`docs/MILESTONES.md`). A5's sweeper is not deferrable; it is the completion
    half of the D17 write, not a safety net.
+5. **Sign the cricket ball-by-ball feed contract** — the gating external dependency for the cricket
+   MVP (`docs/CRICKET-MVP.md` §6, decision C-b). Ball-level cricket coverage is a specialist feed,
+   distinct from a general odds-data deal. Nothing in XC1 onward builds without it.
+6. Cricket engine (XC1→XC5 / CM1→CM6) can be built and demoed on **play-money** before M5/M6/M7
+   land — those run in parallel and only rejoin at CM6 for real-money go-live.
 
 ## Open questions carried
 

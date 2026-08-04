@@ -3,6 +3,10 @@
 Derived from `docs/PLAN.md` (sequence) and `docs/ARCHITECTURE.md` (shape). Workstream references
 in brackets map back to `PLAN.md`.
 
+> **These `M`-series milestones are the general, multi-engine plan.** The **active track is
+> cricket-only**, whose **`CM`-series** milestones live in `docs/CRICKET-MVP.md` and build on the
+> shared `M0–M3` and `M5–M7` here. The casino (M9) and the exchange (M13–M15) are deferred (D24).
+
 **Every milestone ends in a proof** — something demonstrable or a test that passes, never
 "component X is done". Proofs are the client-visible checkpoints and the natural invoice
 boundaries.
@@ -262,7 +266,7 @@ Launch blocker, not a feature. Cross-cutting — cannot be bolted on later.
 > while M10 is scheduled after it. M8 proves placement and a clean settlement path; M10 proves
 > settlement is correct under voids, corrections and replay.
 
-- [ ] `I1` Market and selection model; jurisdictional market-type filtering (D3 — no fancy/toss)
+- [ ] `I1` Market and selection model; jurisdictional market-type filtering — fancy/session/toss are config-gated capabilities, default off, client-enabled per market (D21, D24), not excluded
 - [ ] `I2` Two-phase placement: price validation → accept/reject on movement within tolerance
 - [ ] `I3` Bet lifecycle state machine (`PRD.md` §11.4)
 - [ ] `I4` Reservation at submission through the ledger
