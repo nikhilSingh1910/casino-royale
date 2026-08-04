@@ -56,12 +56,21 @@ M1, M2 and M3 run largely in parallel once M0 lands.
 
 ---
 
-## 🟢 M1 — Chip ledger is provably correct · **L**
+## ✅ M1 — Chip ledger is provably correct · **L** — DONE 2026-08-04
 
-> **Proof:** property tests pass — the chip ledger always balances (every entry a balanced
-> debit/credit pair); **no bet path drives a balance negative**; `available + reserved` accounts for
-> every chip topped-up less won/lost; and `sum(reserved rows) == reserved balance` per user. Holds
-> under concurrent placement/settlement — one Postgres transaction per operation (D33).
+> **Proof — verified.** Pure double-entry core property-tested with fast-check (300+ runs: always
+> balances, never negative, matches an independent tally). Integration tests against **real
+> Postgres**: top-up/reserve/win/lose/void with correct balances; over-reserve refused; idempotent
+> by key; no double-settle; **5 concurrent reserves of 30 vs a 100 balance → exactly 3 succeed,
+> balance never negative, invariants hold** (advisory-lock serialisation). `verifyIntegrity()`
+> confirms ledger sums to zero and reserved == open reservations. 22 tests green under `pnpm check`.
+>
+> **Built:** `ledger/core.ts` (pure rules) · `ledger/ledger.service.ts` (Kysely, advisory lock,
+> idempotent) · `db/` (schema + migrate) · `shared/odds` (scaled-int price, customer-favour rounding).
+> **Deferred:** A2.1–A2.3 exchange ladder (exchange-only, Phase 2); `C3.1` pg-boss job queue (→ CM4,
+> when settlement jobs land). **Hardening TODO:** store op-kind on `ledger_txn` and assert it on
+> idempotent replay (guards against a key reused across *different* operations); materialise balances
+> if `SUM`-per-op becomes a hotspot.
 
 The highest-priority work in the project. Everything else assumes it.
 
