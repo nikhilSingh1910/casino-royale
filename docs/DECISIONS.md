@@ -570,3 +570,41 @@ customer's spendable balance.
 
 **Consequence.** A1.4's property test is scoped to wager paths, so it no longer fails on a real
 chargeback. Unblocks A3.2/A3.3.
+
+---
+
+### D32 — Play-money only, forever: no real money in or out (governs scope)
+
+**Context.** The project was specified and built as a licensed real-money betting platform. On
+2026-08-04 the client confirmed the product is **play-money only, permanently** — virtual chips with
+no cash value, no deposits, no withdrawals, no purchases. This is the governing scope decision and
+it supersedes the real-money assumption throughout.
+
+**Decision.** The platform is a **free-to-play virtual cricket betting game**. No real money enters
+or leaves at any point or phase.
+
+**Removed from scope** — retained in the docs as reference and for any future real-money pivot, **not
+deleted** (all preserved in git):
+- Gambling licence and jurisdiction as a Tech gate (PRD §10; B1 no longer blocks the build)
+- KYC/AML (M5); self-exclusion registers and statutory RG (M6, D14, D18 in their regulatory sense);
+  regulatory reporting (M12)
+- Real payment rails and orchestration (M7; **D7 Hyperswitch — cut**)
+- Chargebacks and the dispute-suspense account (**D31 — void**)
+- Player-funds segregation; gaming duty; the financial model (PRD §10.4, §11.11)
+
+**Retained:**
+- The cricket engine — feed, markets, pricing, in-play, settlement — **unchanged**.
+- A chip-economy ledger, with a **softened bar: game integrity (no chip duplication/loss), not
+  financial-regulatory audit.** TigerBeetle (D5) and immudb (D8) are now arguably overkill — flagged
+  for reconsideration against a simpler store; not yet re-decided.
+- Accounts/identity — login + chip balance, no verification tiers.
+- D28 (reserve chips at bet placement) and D29 (sync so a bet can't exceed the chip balance) still
+  apply. **D30 collapses to a single chip currency.**
+- The feed choice (D26): the accountability/SLA/licence bar **evaporates** — no money settles, so
+  cricbuzz11 or any cheap feed is fine in production. **No demo-vs-prod feed distinction remains**;
+  the boot tripwire is moot.
+
+**Consequence.** A materially lighter product. No betting revenue — monetisation (ads / subscription
+/ engagement) and app-store "simulated gambling" / social-casino rules are the client's business and
+legal concern (Appendix A.5), not Tech's. Roughly half the prior compliance/payments scope is gone;
+the cricket game itself is unchanged.

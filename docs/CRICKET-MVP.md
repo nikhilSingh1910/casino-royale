@@ -10,7 +10,8 @@ on why.
 | Scope | Cricket betting, operator-priced. One sport, one engine |
 | Chosen | 2026-08-04 — client narrowed Phase 1 to cricket (answers `PRD.md` §16 Q3). See **D24**, **D25** |
 | Reference | The market surface mirrors the Indian reference platforms' cricket product (`PRD.md` §5.2–5.3) |
-| Jurisdiction | **Not a Tech concern** (client-owned, per Appendix A.5). Tech builds every market type plus the switches; the client sets which are enabled where, via config |
+| Jurisdiction | **Not a Tech concern** (client-owned, per Appendix A.5). Under D32 (play-money) market legality is largely moot anyway; the config switches remain but are not load-bearing |
+| **Money** | **Play-money only, forever (D32).** Virtual chips, no cash value, no deposits/withdrawals. No KYC, no real payments, no chargebacks, no gambling licence |
 
 ---
 
@@ -45,12 +46,12 @@ So the cricket MVP is a **fixed-odds sportsbook specialised for cricket**. It:
 | In-play suspension, repricing, per-session settlement | Betfair-liquidity resale (not licensable) |
 | Trading console + integrity flags for cricket | Bonusing / affiliates (unscheduled; `PRD.md` §11.12) |
 
-### 0.3 What cricket-first does *not* let us skip
+### 0.3 The real-money launch blockers are gone (D32)
 
-Real-money launch blockers apply regardless of sport. The cricket engine can be built and demoed
-against the ledger with **play-money** before these land, but real-money go-live still needs:
-**M5** (KYC/AML), **M6** (responsible gambling), **M7** (payments). These run in parallel with the
-cricket workstreams below.
+Under **D32 (play-money only)** there is **no real-money go-live**, so **M5 (KYC/AML), M6 (statutory
+RG), M7 (payments) and licensing are all out of scope.** The cricket engine on a chip ledger *is* the
+product — there is no separate real-money track to reach. Lightweight healthy-play features may still
+be desirable UX, but they are not the statutory RG regime.
 
 ---
 
@@ -94,6 +95,11 @@ flowchart LR
 
 ### 2.2 The money model is the *simple* one — this is the crux
 
+> **Under D32 these are *virtual chips*, not money.** The reservation mechanics below are unchanged
+> (you still can't stake chips you don't have), but **D31/chargebacks is void** (no real payments)
+> and **D30 collapses to a single chip currency**. The correctness bar is game integrity — no chip
+> duplication or loss — not financial audit.
+
 Operator-priced betting has **no order book, no resting orders and no partial fills.** A bet is
 accepted in full at a price, or rejected. That makes the reservation trivial compared to the
 exchange:
@@ -116,8 +122,8 @@ finalised.
 | §12 item | Applies to cricket? |
 |---|---|
 | **2** sync-vs-async money paths | **Yes.** Bet placement must be synchronous — you cannot accept a bet you cannot fund |
-| **3(a)** currency in the account/ID scheme | **Yes.** Unchanged Phase-0 requirement |
-| **8** chargebacks | **Yes.** Card deposits can be charged back after the stake is lost |
+| **3(a)** currency in the account/ID scheme | **Simplified** — one chip currency under D32 (D30) |
+| **8** chargebacks | **Void under D32** — no real payments to charge back |
 | **1** reservation mechanism | **Only the simple case** — full-stake posted transfer. Partial-fill capture is exchange-only, deferred |
 
 ### 2.3 Cricket domain model
@@ -294,12 +300,12 @@ group · `XC4.3` void rules (abandonment, no-result) · `XC4.4` compensating-ent
 stake factoring · `XC5.4` integrity flags on session patterns · `XC5.5` all actions via the C4
 wrapper.
 
-### CM6 — Cricket end-to-end · **L** — *the launch proof*
-> **Proof:** funded, KYC'd user → cricket match → bets on match-odds, bookmaker **and** a session
-> market → ball-by-ball settlement → ledger movement → correct balance. Includes a void and a
-> resettlement. The full path, real-money-shaped.
+### CM6 — Cricket end-to-end · **L** — *the playable-product proof*
+> **Proof:** a player with chips → cricket match → bets on match-odds, bookmaker **and** a session
+> market → ball-by-ball settlement → chip-ledger movement → correct balance. Includes a void and a
+> resettlement. The full play-money path, end to end — a playable product.
 
-Integration milestone over CM1–CM5 + M5/M6/M7.
+Integration milestone over CM1–CM5. (No M5/M6/M7 under D32.)
 
 ---
 
@@ -309,20 +315,20 @@ Integration milestone over CM1–CM5 + M5/M6/M7.
 M0 → M1 ─┬─────────────► XC1 → XC2 → XC3 → XC4 → CM6
          │  (cricket)                              ▲
 M2 ──────┤                          XC5 ───────────┘
-         │
-M5,M6,M7 ┴──(real-money, parallel)──────────────► CM6
 ```
 
-**Longest chain:** M0 → M1 → XC1 → XC2 → XC3 → XC4 → CM6. XC5 runs alongside. The compliance/payments
-track (M5/M6/M7) is parallel and only rejoins at CM6 for real-money go-live — the cricket engine can
-be proven on play-money before it lands.
+**Longest chain:** M0 → M1 → XC1 → XC2 → XC3 → XC4 → CM6. XC5 runs alongside. **No real-money track**
+under D32 — there is no M5/M6/M7 to run in parallel, and CM6 is a *playable product*, not a
+pre-launch gate.
 
 **External dependencies — flag with owners at kickoff:**
 
-- **Cricket ball-by-ball feed contract** — gates **production only** (D26). Demo/dev builds on
-  cricbuzz11/fixtures with no contract, so XC1 onward starts now; the contracted provider must be
-  signed before CM6 / real-money go-live. Ball-level cricket coverage is a specialist product.
-- The §12 sign-offs (items 2, 3a, 8) still gate M1, and therefore everything.
+- **Cricket ball-by-ball feed** — **no contract required under D32** (no money settles, so cricbuzz11
+  or any cheap source is fine, even in production; D26's demo-vs-prod split and boot tripwire are
+  moot). Ball-level coverage of the target competitions is still the practical requirement — pick a
+  source with good coverage and reasonable reliability.
+- The §12 sign-offs are done (D28–D31); D31/chargebacks is void under D32. Nothing architectural
+  gates M1 now.
 
 ---
 

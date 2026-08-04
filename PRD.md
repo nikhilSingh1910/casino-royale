@@ -1,6 +1,13 @@
 # Product Requirements Document
 ## Betting Exchange, Sportsbook & Casino Platform — EU/EEA Licensed Build
 
+> **⚠️ SCOPE SUPERSEDED — read `docs/DECISIONS.md` D32 first.** The product is now **play-money only,
+> forever** (a free-to-play virtual cricket game). This document was written for a *licensed
+> real-money* platform; its licensing, KYC/AML, payments, chargeback, RG and duty sections are **out
+> of scope under D32**, retained as reference and for any future real-money pivot. The active build
+> is `docs/CRICKET-MVP.md`; the cricket market/engine analysis here (Parts I, §5, §11.3–11.5) is
+> still valid.
+
 | | |
 |---|---|
 | **Version** | 0.2 — Expanded. Draft for client review |

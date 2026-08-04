@@ -1,10 +1,11 @@
 # casino-royale
 
-Specification and delivery plan for a **licensed EU/EEA real-money wagering platform** — betting
-exchange, fixed-odds sportsbook, and aggregated casino behind one identity and one wallet.
+A **free-to-play virtual cricket betting game** — play-money only, no real money in or out (**D32**).
+Cricket match-odds, bookmaker and fancy/session markets on virtual chips with no cash value.
 
-No application code yet. This repository is currently the specification, the working contract, and
-the build plan.
+No application code yet. This repository is the specification, the working contract, and the build
+plan. It was originally specified as a licensed real-money platform; **D32 reframed it to play-money
+only**, so the licensing/KYC/payments half is retained as reference but out of scope — see below.
 
 ---
 
@@ -19,27 +20,23 @@ the build plan.
 | [`docs/PLAN.md`](docs/PLAN.md) | Build sequence by workstream and phase |
 | [`docs/MILESTONES.md`](docs/MILESTONES.md) | 16 milestones (M0–M15), each ending in a demonstrable proof |
 | **[`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md)** | **The active track.** Cricket-only Phase 1 — plan, architecture, CM-series milestones |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D31, append-only. Authoritative on *why* |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D32, append-only. Authoritative on *why*. **D32 governs scope** |
 | [`docs/REVIEW-FINDINGS.md`](docs/REVIEW-FINDINGS.md) | Output of the 2026-08-04 adversarial review — 142 findings and their disposition |
 
 ---
 
 ## Current status
 
-**Phase 0 — licensing and foundations. No code written.**
+**No code written yet. Nothing blocks the build** — see [`docs/STATE.md`](docs/STATE.md).
 
-**Active near-term scope: cricket-only MVP** ([`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md)) — an
-operator-priced cricket sportsbook on the shared money/identity core. The casino and the true
-exchange are deferred (D24, D25).
+**Scope (D32): play-money only, forever.** The active build is
+[`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md) — an operator-priced cricket engine (match-odds /
+bookmaker / fancy-session) on a chip-economy ledger.
 
-Blocking:
-
-- **B1 — target jurisdiction not chosen** (client-owned). Determines KYC timing, permitted market
-  types, RG defaults, reporting and residency. Gates real-money launch, not the build — the cricket
-  engine builds on play-money regardless.
-
-The four M1-gating architectural decisions (§12 items 1, 2, 3a, 8) were **signed off 2026-08-04
-(D28–D31), and D6 confirmed (D27)** — so **M0, M1 and the cricket engine can all start now.**
+This reframed the project on 2026-08-04. It was specified as a *licensed real-money* platform, so
+roughly half those docs (licensing, KYC/AML, real payments, chargebacks, statutory RG, reporting)
+are now **out of scope under D32**, kept as reference. The cricket engine is unchanged. Architectural
+sign-offs D27–D31 stand (D31/chargebacks now void under D32).
 
 ---
 

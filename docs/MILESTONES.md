@@ -1,5 +1,9 @@
 # MILESTONES & TODO
 
+> **Scope: play-money only (D32).** M5 (KYC/AML), M6 (statutory RG), M7 (payments), M12 (reporting)
+> and the licensing gate are **out of scope** — retained as reference. The active track is the
+> cricket `CM`-series in `docs/CRICKET-MVP.md`; the `M`-series below is the original real-money plan.
+
 Derived from `docs/PLAN.md` (sequence) and `docs/ARCHITECTURE.md` (shape). Workstream references
 in brackets map back to `PLAN.md`.
 
