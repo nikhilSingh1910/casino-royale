@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
+import { AuditService } from '../audit';
 import { IdentityRepo } from './identity.repo';
 import { hashPassword, verifyPassword } from './password';
 
@@ -15,7 +16,10 @@ export interface Session {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly repo: IdentityRepo) {}
+  constructor(
+    private readonly repo: IdentityRepo,
+    private readonly audit: AuditService,
+  ) {}
 
   async signup(email: string, password: string): Promise<{ userId: string }> {
     if (await this.repo.findByEmail(email)) throw new AuthError('email already registered');
@@ -57,14 +61,21 @@ export class AuthService {
     }
     await this.repo.updatePassword(userId, await hashPassword(newPassword));
     await this.repo.revokeOtherSessions(userId, sessionId); // keep the current session live
-    await this.repo.audit(userId, 'password_changed', userId, null);
+    await this.audit.record({ actor: userId, action: 'password_changed', subject: userId });
   }
 
   /** Admin action — suspend an account and terminate every session it holds (light D18). */
   async suspend(actorId: string, userId: string): Promise<void> {
+    const before = await this.repo.findById(userId);
     await this.repo.setStatus(userId, 'suspended');
     await this.repo.revokeAllSessions(userId);
-    await this.repo.audit(actorId, 'account_suspended', userId, null);
+    await this.audit.record({
+      actor: actorId,
+      action: 'account_suspended',
+      subject: userId,
+      before: { status: before?.status ?? null },
+      after: { status: 'suspended' },
+    });
   }
 }
 

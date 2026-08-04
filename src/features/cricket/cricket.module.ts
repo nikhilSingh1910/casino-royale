@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../db';
 import { LedgerModule } from '../../ledger';
+import { AuditModule } from '../audit';
 import { IdentityModule } from '../identity';
 import { BetRepo } from './bet.repo';
 import { CricketRepo } from './cricket.repo';
@@ -11,7 +12,7 @@ import { PlacementService } from './placement.service';
 import { SettlementService } from './settlement.service';
 
 @Module({
-  imports: [DatabaseModule, LedgerModule, IdentityModule],
+  imports: [DatabaseModule, LedgerModule, IdentityModule, AuditModule],
   providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService],
   exports: [FeedIngestService, CricketRepo, MarketService, PlacementService, SettlementService],
 })

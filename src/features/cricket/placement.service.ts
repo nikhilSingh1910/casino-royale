@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Chips } from '../../shared/money';
+import { add, Chips, chips, ZERO } from '../../shared/money';
 import { price, winnings } from '../../shared/odds';
 import { BetSide } from '../../db';
 import { LedgerService } from '../../ledger';
 import { AccountService } from '../identity';
+import { BetPosition, calculateCustomerExposure, calculateOperatorLiability } from './exposure';
 import { BetRepo } from './bet.repo';
-import { calculateCustomerExposure, calculateOperatorLiability } from './exposure';
 import { MarketRepo } from './market.repo';
 
 export class BetRejectedError extends Error {}
@@ -101,5 +101,25 @@ export class PlacementService {
 
   async operatorLiability(marketId: string): Promise<Chips> {
     return calculateOperatorLiability(await this.bets.positionsForMarket(marketId, POSITIONS_MAX));
+  }
+
+  /** Book liability across a whole match — per-market worst cases summed (XC5.1). Reuses §5 rule 11. */
+  async operatorLiabilityByMatch(matchId: string): Promise<Chips> {
+    const tagged = await this.bets.positionsForMatch(matchId, POSITIONS_MAX);
+    const byMarket = new Map<string, BetPosition[]>();
+    for (const { marketId, position } of tagged) {
+      const arr = byMarket.get(marketId) ?? [];
+      arr.push(position);
+      byMarket.set(marketId, arr);
+    }
+    let total = ZERO;
+    for (const positions of byMarket.values()) total = add(total, calculateOperatorLiability(positions));
+    return total;
+  }
+
+  /** Open stake per user on a market — feeds the integrity detector (XC5.4). */
+  async stakesByUserForMarket(marketId: string): Promise<{ userId: string; stake: Chips }[]> {
+    const rows = await this.bets.stakesByUserForMarket(marketId, POSITIONS_MAX);
+    return rows.map((r) => ({ userId: r.userId, stake: chips(r.stake) }));
   }
 }

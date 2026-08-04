@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { BetSide, BetStatus, Database, KYSELY } from '../../db';
 import { chips } from '../../shared/money';
 import { BetPosition } from './exposure';
@@ -142,5 +142,31 @@ export class BetRepo {
 
   async setStatus(betId: string, status: BetStatus): Promise<void> {
     await this.db.updateTable('bet').set({ status }).where('id', '=', betId).execute();
+  }
+
+  /** Open positions across all a match's markets, tagged by market — one query, for match-level liability. */
+  async positionsForMatch(matchId: string, limit: number): Promise<{ marketId: string; position: BetPosition }[]> {
+    const rows = await this.db
+      .selectFrom('bet')
+      .select(['market_id', 'side', 'reserved', 'potential_payout'])
+      .where('match_id', '=', matchId)
+      .where('status', '=', 'open')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({ marketId: r.market_id, position: toPosition(r) }));
+  }
+
+  /** Total open stake per user on a market — the input to the concentration integrity flag (XC5.4). */
+  async stakesByUserForMarket(marketId: string, limit: number): Promise<{ userId: string; stake: bigint }[]> {
+    const rows = await this.db
+      .selectFrom('bet')
+      .select('user_id')
+      .select(sql<string>`COALESCE(SUM(stake), 0)::text`.as('stake'))
+      .where('market_id', '=', marketId)
+      .where('status', '=', 'open')
+      .groupBy('user_id')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({ userId: r.user_id, stake: BigInt(r.stake) }));
   }
 }

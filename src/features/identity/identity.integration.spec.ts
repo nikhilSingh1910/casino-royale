@@ -3,6 +3,7 @@ import { createDb, Database, migrate } from '../../db';
 import { LedgerService } from '../../ledger';
 import { chips } from '../../shared/money';
 import { randomUUID } from 'node:crypto';
+import { AuditRepo, AuditService } from '../audit';
 import { AccountService, NotEligibleError } from './account.service';
 import { AuthError, AuthService } from './auth.service';
 import { IdentityRepo } from './identity.repo';
@@ -23,7 +24,7 @@ describe('identity (integration, real Postgres) — M2', () => {
     await migrate(db);
     ledger = new LedgerService(db);
     repo = new IdentityRepo(db);
-    auth = new AuthService(repo);
+    auth = new AuthService(repo, new AuditService(new AuditRepo(db)));
     account = new AccountService(repo, ledger);
   });
   afterAll(async () => {

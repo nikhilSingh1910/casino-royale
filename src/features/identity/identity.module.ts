@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../db';
 import { LedgerModule } from '../../ledger';
+import { AuditModule } from '../audit';
 import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
 import { AuthController } from './auth.controller';
@@ -8,7 +9,7 @@ import { AuthService } from './auth.service';
 import { IdentityRepo } from './identity.repo';
 
 @Module({
-  imports: [DatabaseModule, LedgerModule],
+  imports: [DatabaseModule, LedgerModule, AuditModule],
   controllers: [AuthController, AccountController],
   providers: [IdentityRepo, AuthService, AccountService],
   exports: [AuthService, AccountService, IdentityRepo],

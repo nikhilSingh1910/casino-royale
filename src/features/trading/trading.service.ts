@@ -1,0 +1,122 @@
+import { Injectable } from '@nestjs/common';
+import { Chips } from '../../shared/money';
+import { OperatorActionKind } from '../../db';
+import { AuditService } from '../audit';
+import { Correction, MarketService, MarketSettlement, PlacementService, SettlementService } from '../cricket';
+import { ActionNotFoundError, ActionNotPendingError, SoDViolationError } from './errors';
+import { flagConcentration, IntegrityFlag } from './integrity';
+import { TradingRepo } from './trading.repo';
+
+export interface ProposalParams {
+  reason: string;
+  correctionId?: string;
+}
+export type ApproveResult = { kind: OperatorActionKind; result: MarketSettlement | Correction[] };
+
+const FLAG_MAX = 1000;
+
+/**
+ * The operator console (D36). Reversible market locks are single-auth + audited; money-affecting
+ * overrides (void/resettle) are proposed by one operator and approved by another (four-eyes, XC5.2),
+ * executed through CM4's settlement mechanics. Every action writes through the C4 AuditService.
+ */
+@Injectable()
+export class TradingService {
+  constructor(
+    private readonly actions: TradingRepo,
+    private readonly markets: MarketService,
+    private readonly settlement: SettlementService,
+    private readonly placement: PlacementService,
+    private readonly audit: AuditService,
+  ) {}
+
+  // ---- reversible market locks (single-auth) --------------------------------
+
+  async suspendMarket(marketId: string, operator: string): Promise<void> {
+    const before = await this.markets.getMarket(marketId);
+    await this.markets.suspendMarket(marketId);
+    await this.audit.record({
+      actor: operator,
+      action: 'market.suspend',
+      subject: marketId,
+      before: { status: before?.status ?? null },
+      after: { status: 'suspended' },
+    });
+  }
+
+  async reopenMarket(marketId: string, operator: string): Promise<void> {
+    const before = await this.markets.getMarket(marketId);
+    await this.markets.reopenMarket(marketId);
+    const after = await this.markets.getMarket(marketId);
+    await this.audit.record({
+      actor: operator,
+      action: 'market.reopen',
+      subject: marketId,
+      before: { status: before?.status ?? null },
+      after: { status: after?.status ?? null },
+    });
+  }
+
+  // ---- dual-auth money overrides (four-eyes) --------------------------------
+
+  async propose(
+    kind: OperatorActionKind,
+    marketId: string,
+    params: ProposalParams,
+    adjuster: string,
+  ): Promise<{ id: string }> {
+    const { id } = await this.actions.createAction(kind, marketId, params, adjuster);
+    await this.audit.record({ actor: adjuster, action: `action.propose.${kind}`, subject: marketId, after: { actionId: id, params } });
+    return { id };
+  }
+
+  async approve(actionId: string, approver: string): Promise<ApproveResult> {
+    const action = await this.actions.findAction(actionId);
+    if (!action) throw new ActionNotFoundError(actionId);
+    if (action.status !== 'pending') throw new ActionNotPendingError(actionId);
+    if (action.proposed_by === approver) throw new SoDViolationError('approver must differ from proposer'); // D36
+    const claimed = await this.actions.decide(actionId, 'executed', approver);
+    if (!claimed) throw new ActionNotPendingError(actionId); // lost a concurrent race
+
+    const params = action.params as ProposalParams;
+    const result: MarketSettlement | Correction[] =
+      action.kind === 'void'
+        ? await this.settlement.voidFancyMarket(action.market_id, approver, params.reason)
+        : await this.settlement.resettleFancyMarket(action.market_id, approver, params.reason, params.correctionId ?? actionId);
+
+    await this.audit.record({
+      actor: approver,
+      action: `action.approve.${action.kind}`,
+      subject: action.market_id,
+      before: { proposedBy: action.proposed_by },
+      after: { actionId, result },
+    });
+    return { kind: action.kind, result };
+  }
+
+  async reject(actionId: string, operator: string, reason: string): Promise<void> {
+    const action = await this.actions.findAction(actionId);
+    if (!action) throw new ActionNotFoundError(actionId);
+    if (action.status !== 'pending') throw new ActionNotPendingError(actionId);
+    const claimed = await this.actions.decide(actionId, 'rejected', operator);
+    if (!claimed) throw new ActionNotPendingError(actionId);
+    await this.audit.record({ actor: operator, action: `action.reject.${action.kind}`, subject: action.market_id, reason });
+  }
+
+  // ---- read-only risk views (XC5.1) -----------------------------------------
+
+  exposureByMarket(marketId: string): Promise<Chips> {
+    return this.placement.operatorLiability(marketId);
+  }
+  exposureByMatch(matchId: string): Promise<Chips> {
+    return this.placement.operatorLiabilityByMatch(matchId);
+  }
+  exposureByUser(userId: string, marketId: string): Promise<Chips> {
+    return this.placement.customerExposure(userId, marketId);
+  }
+
+  async integrityFlags(marketId: string): Promise<IntegrityFlag[]> {
+    const stakes = await this.placement.stakesByUserForMarket(marketId);
+    return flagConcentration(stakes.map((s) => ({ userId: s.userId, stake: s.stake as bigint })), FLAG_MAX);
+  }
+}

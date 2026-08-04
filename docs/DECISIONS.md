@@ -700,3 +700,39 @@ None of this was previously specified, so the semantics are decided here rather 
 replayable and auditable — the audit posture an operator/regulator wants. The deferred items
 (multi-innings, clawback suspense, job-queue trigger, SoD) are listed in `docs/CRICKET-MVP.md` CM4
 and must not be presented as done.
+
+---
+
+### D36 — Trading console: C4 audit wrapper, requireRole, SoD dual-auth (CM5)
+
+**Context.** CM5 gives operators the console to suspend/void/resettle, with the audit posture a
+licensing review checks: attributable, immutable, before/after, and **four-eyes on money moves**.
+CM4 already built the *mechanics* (`voidFancyMarket`, `resettleFancyMarket`, market suspend) but with
+no authorization, no segregation of duties, and audit scattered in `IdentityRepo.audit`.
+
+**Decision.**
+1. **One audit path (C4).** A shared `AuditService` (new `features/audit/`) is the single writer to
+   the append-only `audit_log`, recording `{actor, action, subject, before?, after?, reason?}`. The
+   two existing writers — M2 `AuthService`, CM4 `SettlementService` — migrate onto it and
+   `IdentityRepo.audit` is removed (rule-of-three; the extraction `identity.repo` flagged for CM5).
+   Every back-office action writes through it (XC5.5).
+2. **One role policy (rule 9).** A single `@Roles(...)` decorator + `RolesGuard` in identity, layered
+   after `SessionGuard`, resolves the caller's `app_user.role` and gates the console to `trader`/`admin`.
+   No feature re-checks roles.
+3. **SoD dual-auth on money overrides.** An `operator_action` row (kind `void`|`resettle`) is
+   **proposed** by an adjuster and **approved by a different operator**, which executes it via CM4.
+   `approve` throws `SoDViolationError` if approver = proposer — segregation expressed in exactly one
+   place. Suspend/reopen (reversible, no money) are single-auth + audited.
+4. **Exposure views reuse the single owners.** `calculateOperatorLiability` (book) and
+   `calculateCustomerExposure` (user) — no second formula (§5 rules 2/11); match-level aggregates the
+   per-market values.
+5. **Integrity flags are review heuristics, not verdicts** — a pure detector over a market's session
+   bets (e.g. single-user concentration) that *surfaces* patterns for a human; it blocks nothing.
+
+**Deferred (not built, not the proof):** **per-user stake factoring** (XC5.3, also the CM3 XC3.7 gap)
+— touches placement, and is not in the CM5 proof; it lands as a focused follow-up. HTTP e2e for the
+console (service + role-gated controller are built and integration-tested; no running-server test yet).
+
+**Consequence.** The console reuses CM4's settlement mechanics behind authz + four-eyes + a single
+immutable audit trail — the review artefact an auditor asks for first. SoD lives in one method; roles
+in one guard; audit in one service.

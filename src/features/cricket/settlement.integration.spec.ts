@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createDb, Database, migrate } from '../../db';
 import { LedgerService } from '../../ledger';
 import { AccountService, IdentityRepo } from '../identity';
+import { AuditRepo, AuditService } from '../audit';
 import { chips } from '../../shared/money';
 import { price, winnings } from '../../shared/odds';
 import { BetRepo } from './bet.repo';
@@ -33,13 +34,14 @@ describe('in-play settlement (integration, real Postgres) — CM4', () => {
     await migrate(db);
     ledger = new LedgerService(db);
     const identity = new IdentityRepo(db);
+    const audit = new AuditService(new AuditRepo(db));
     account = new AccountService(identity, ledger);
     cricket = new CricketRepo(db);
     markets = new MarketRepo(db);
     marketService = new MarketService(markets, cricket);
     bets = new BetRepo(db);
     placement = new PlacementService(markets, ledger, account, bets);
-    settlement = new SettlementService(markets, bets, cricket, ledger, identity);
+    settlement = new SettlementService(markets, bets, cricket, ledger, audit);
   });
   afterAll(async () => {
     await db.destroy();

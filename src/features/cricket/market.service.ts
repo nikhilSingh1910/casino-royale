@@ -72,4 +72,17 @@ export class MarketService implements MarketRepricer {
   getMarkets(matchId: string) {
     return this.repo.marketsForMatch(matchId, MARKETS_MAX);
   }
+
+  getMarket(marketId: string) {
+    return this.repo.getMarketWithFancy(marketId);
+  }
+
+  /** Operator lock/unlock of a single market (XC5.2). A settled market cannot be reopened. */
+  async suspendMarket(marketId: string): Promise<void> {
+    await this.repo.setStatusForMarket(marketId, 'suspended');
+  }
+  async reopenMarket(marketId: string): Promise<void> {
+    const m = await this.repo.getMarketWithFancy(marketId);
+    if (m?.status === 'suspended') await this.repo.setStatusForMarket(marketId, 'open');
+  }
 }

@@ -21,7 +21,7 @@ just don't convert to money.
 
 ## Phase
 
-**Foundations DONE (M0·M1·M2). Cricket: CM1·CM2·CM3·CM4 DONE; CM5 (trading console + integrity) next.**
+**Foundations DONE (M0·M1·M2). Cricket: CM1·CM2·CM3·CM4·CM5 DONE; CM6 (end-to-end playable product) next.**
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log
@@ -80,11 +80,17 @@ milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
    all idempotent by key. *Deferred:* match-odds/bookmaker settlement, multi-innings, per-wicket/match
    triggers, dual-auth SoD enforcement (→CM5), durable job-queue trigger, clawback-beyond-balance
    suspense (`docs/CRICKET-MVP.md` CM4).
-4. **CM5 (trading console + integrity) is next**: an operator suspends/locks/voids/resettles through a
-   console — every action in the immutable audit log with operator + before/after; **SoD enforced**
-   (adjuster ≠ approver); exposure by match/market/user; session-integrity flags surface. This is where
-   the `IdentityRepo.audit` writer is promoted to the shared `AuditService` (per its own note). Then
-   CM6 (end-to-end playable product).
+4. ✅ **CM5 — trading console + integrity** — DONE (92 tests green, real Postgres). One C4 `AuditService`
+   (before/after; the two prior writers migrated, `IdentityRepo.audit` deleted); one `RolesGuard`
+   (rule 9); **four-eyes** void/resettle via `operator_action` (self-approval throws, atomic claim);
+   suspend/reopen single-auth; exposure by market/user/match reusing §5 rules 2/11; a pure
+   concentration integrity flag. *Deferred:* stake-factoring (XC5.3), HTTP e2e, the claim↔execute
+   saga gap, SoD-by-identity (`docs/CRICKET-MVP.md` CM5, D36).
+5. **CM6 (end-to-end playable product) is next** — the integration proof over CM1–CM5: a player with
+   chips → a cricket match → bets on match-odds, bookmaker **and** a session market → ball-by-ball
+   settlement → correct ledger balance, **including a void and a resettlement**. The full play-money
+   path, end to end (`docs/CRICKET-MVP.md` CM6). NB: match-odds/bookmaker **placement** is not yet
+   built (CM3 was fancy-only) — CM6 will surface that gap and decide scope.
 
 ## Notes
 

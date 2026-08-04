@@ -381,7 +381,7 @@ group · `XC4.3` void rules (abandonment, no-result) · `XC4.4` compensating-ent
 > race** (a placement committing between the window-complete check and the final drain can orphan an
 > open bet) — flagged, mitigated by the drain-until-empty loop.
 
-### CM5 — Trading console + integrity · **L**
+### ✅ CM5 — Trading console + integrity · **L** — DONE 2026-08-04
 > **Proof:** an operator suspends a market, voids a bet and resettles through the console — every
 > action in the immutable audit log with operator, timestamp, before/after; SoD enforced (adjuster ≠
 > approver); session-market integrity flags surface for review.
@@ -389,6 +389,29 @@ group · `XC4.3` void rules (abandonment, no-result) · `XC4.4` compensating-ent
 `XC5.1` exposure by match/market/user · `XC5.2` suspend/lock/void/resettle (dual-auth) · `XC5.3`
 stake factoring · `XC5.4` integrity flags on session patterns · `XC5.5` all actions via the C4
 wrapper.
+
+> **DONE — verified** (92 tests green, real Postgres). The console reuses CM4's settlement mechanics
+> behind authz + four-eyes + one audit trail (D36). **C4 audit wrapper** (`XC5.5`): a single
+> `AuditService` (new `features/audit/`) is the only writer to the append-only `audit_log`, recording
+> actor + **before/after**; the two prior writers (M2 `AuthService`, CM4 `SettlementService`) were
+> migrated onto it and `IdentityRepo.audit` deleted. **requireRole** (rule 9): one `@Roles`/`RolesGuard`
+> gates the console to trader/admin (unit-proven — matching role allowed, others `Forbidden`, no
+> session `401`). **SoD dual-auth** (`XC5.2`): void/resettle are **proposed** by one operator and
+> **approved by a different** one (`operator_action`), which executes via CM4 — self-approval throws
+> `SoDViolationError`, a rejected or already-decided action can't be approved, and the claim is atomic
+> (`UPDATE … WHERE status='pending' RETURNING`) so a concurrent double-approve can't double-execute.
+> Suspend/reopen are single-auth + audited. **Exposure** (`XC5.1`): by market/user reuse §5 rules
+> 2/11 directly; by match aggregates per-market worst-cases in one query (no N+1). **Integrity**
+> (`XC5.4`): a pure concentration heuristic surfaces a user holding >60% of a session market's stake —
+> it *surfaces*, never blocks.
+>
+> **Deferred — not built, do not claim as done:** **per-user stake factoring** (`XC5.3` — not in the
+> proof; touches CM3 placement; lands as a focused follow-up, and is also the CM3 `XC3.7` gap);
+> **HTTP e2e** for the console (the role-gated controller is built and the service is
+> integration-tested, but there is no running-server test yet); the **operator-action claim↔execute
+> saga gap** (the action is claimed `executed` before the settlement transaction; a settlement failure
+> after the claim — only reachable via a resettle clawback-underflow — leaves it marked executed);
+> and **SoD is by operator identity**, not human (two operator accounts for one person defeats it).
 
 ### CM6 — Cricket end-to-end · **L** — *the playable-product proof*
 > **Proof:** a player with chips → cricket match → bets on match-odds, bookmaker **and** a session

@@ -146,5 +146,17 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
       placed_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS bet_market_open_idx ON bet (market_id) WHERE status = 'open';
+
+    CREATE TABLE IF NOT EXISTS operator_action (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      kind text NOT NULL CHECK (kind IN ('void', 'resettle')),
+      market_id uuid NOT NULL REFERENCES market(id),
+      params jsonb NOT NULL,
+      proposed_by text NOT NULL,
+      status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'executed', 'rejected')),
+      approved_by text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      decided_at timestamptz
+    );
   `.execute(db);
 }

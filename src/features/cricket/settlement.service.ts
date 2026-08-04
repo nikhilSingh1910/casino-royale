@@ -3,7 +3,7 @@ import { BallEvent } from '../../integrations/feed';
 import { BetSide, BetStatus } from '../../db';
 import { chips, Chips, ZERO } from '../../shared/money';
 import { LedgerService, SettleOutcome } from '../../ledger';
-import { IdentityRepo } from '../identity';
+import { AuditService } from '../audit';
 import { BetRepo } from './bet.repo';
 import { CricketRepo } from './cricket.repo';
 import { MarketRepo } from './market.repo';
@@ -37,7 +37,7 @@ export class SettlementService {
     private readonly bets: BetRepo,
     private readonly cricket: CricketRepo,
     private readonly ledger: LedgerService,
-    private readonly identity: IdentityRepo,
+    private readonly audit: AuditService,
   ) {}
 
   /** Settle every fancy market on a match whose window is complete. Balls are folded once (no N+1). */
@@ -82,7 +82,14 @@ export class SettlementService {
     await this.markets.setStatusForMarket(marketId, 'suspended');
     const settled = await this.drainOpenBets(marketId, () => 'void');
     await this.markets.setStatusForMarket(marketId, 'settled');
-    await this.identity.audit(actor, 'market.void', marketId, { reason, voided: settled });
+    await this.audit.record({
+      actor,
+      action: 'market.void',
+      subject: marketId,
+      before: { status: market.status },
+      after: { status: 'settled', voided: settled },
+      reason,
+    });
     return { marketId, status: 'settled', actualRuns: null, settled };
   }
 
@@ -113,7 +120,13 @@ export class SettlementService {
       await this.bets.setStatus(bet.id, to);
       corrected.push({ betId: bet.id, from, to });
     }
-    await this.identity.audit(actor, 'market.resettle', marketId, { reason, correctionId, corrected });
+    await this.audit.record({
+      actor,
+      action: 'market.resettle',
+      subject: marketId,
+      after: { correctionId, corrected },
+      reason,
+    });
     return corrected;
   }
 

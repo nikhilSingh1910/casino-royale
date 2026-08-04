@@ -96,12 +96,4 @@ export class IdentityRepo {
       .where('revoked_at', 'is', null)
       .execute();
   }
-
-  /** Append-only audit (C4). Reusable AuditService is extracted when CM5 (console) lands. */
-  async audit(actor: string, action: string, subject: string | null, detail: unknown): Promise<void> {
-    await this.db
-      .insertInto('audit_log')
-      .values({ actor, action, subject, detail: detail === undefined ? null : JSON.stringify(detail) })
-      .execute();
-  }
 }

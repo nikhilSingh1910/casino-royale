@@ -146,6 +146,22 @@ export interface BetTable {
   placed_at: Generated<Date>;
 }
 
+export type OperatorActionKind = 'void' | 'resettle';
+export type OperatorActionStatus = 'pending' | 'executed' | 'rejected';
+
+/** A dual-auth (four-eyes) back-office action: proposed by one operator, approved by another (D36). */
+export interface OperatorActionTable {
+  id: Generated<string>;
+  kind: OperatorActionKind;
+  market_id: string;
+  params: ColumnType<unknown, string, never>;
+  proposed_by: string;
+  status: ColumnType<OperatorActionStatus, OperatorActionStatus | undefined, OperatorActionStatus>;
+  approved_by: ColumnType<string | null, never, string>;
+  created_at: Generated<Date>;
+  decided_at: ColumnType<Date | null, never, Date>;
+}
+
 export interface Database {
   ledger_entry: LedgerEntryTable;
   ledger_txn: LedgerTxnTable;
@@ -160,4 +176,5 @@ export interface Database {
   fancy_market: FancyMarketTable;
   market_config: MarketConfigTable;
   bet: BetTable;
+  operator_action: OperatorActionTable;
 }
