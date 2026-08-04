@@ -59,6 +59,31 @@ export interface AuditLogTable {
   created_at: Generated<Date>;
 }
 
+/** A cricket match (CM1). Status is authoritative-for-display but rebuildable from raw_ball_event. */
+export interface CricketMatchTable {
+  match_id: string;
+  competition: string;
+  name: string;
+  starts_at: Date;
+  status: ColumnType<'scheduled' | 'inplay' | 'suspended' | 'closed', 'scheduled' | 'inplay' | 'suspended' | 'closed' | undefined, 'scheduled' | 'inplay' | 'suspended' | 'closed'>;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+/** Append-only ball stream — the replayable source of truth (CRICKET-MVP §2.4). Unique per sequence. */
+export interface RawBallEventTable {
+  id: Generated<string>;
+  match_id: string;
+  sequence: number;
+  innings: number;
+  over: number;
+  ball_in_over: number;
+  runs_off_bat: number;
+  extras: number;
+  is_wicket: boolean;
+  is_legal: boolean;
+  received_at: Generated<Date>;
+}
+
 export interface Database {
   ledger_entry: LedgerEntryTable;
   ledger_txn: LedgerTxnTable;
@@ -66,4 +91,6 @@ export interface Database {
   app_user: AppUserTable;
   user_session: UserSessionTable;
   audit_log: AuditLogTable;
+  cricket_match: CricketMatchTable;
+  raw_ball_event: RawBallEventTable;
 }

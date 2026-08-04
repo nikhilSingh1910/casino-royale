@@ -66,5 +66,29 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
       detail jsonb,
       created_at timestamptz NOT NULL DEFAULT now()
     );
+
+    CREATE TABLE IF NOT EXISTS cricket_match (
+      match_id text PRIMARY KEY,
+      competition text NOT NULL,
+      name text NOT NULL,
+      starts_at timestamptz NOT NULL,
+      status text NOT NULL DEFAULT 'scheduled'
+        CHECK (status IN ('scheduled', 'inplay', 'suspended', 'closed')),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS raw_ball_event (
+      id bigserial PRIMARY KEY,
+      match_id text NOT NULL REFERENCES cricket_match(match_id),
+      sequence int NOT NULL,
+      innings int NOT NULL,
+      over int NOT NULL,
+      ball_in_over int NOT NULL,
+      runs_off_bat int NOT NULL,
+      extras int NOT NULL,
+      is_wicket boolean NOT NULL,
+      is_legal boolean NOT NULL,
+      received_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (match_id, sequence)
+    );
   `.execute(db);
 }

@@ -22,4 +22,22 @@ describe('ConfigService', () => {
     expect(config.get('PORT')).toBe(4000);
     expect(config.get('NODE_ENV')).toBe('test');
   });
+
+  it('refuses the fixture feed source in production (CM1 tripwire)', () => {
+    process.env = {
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgres://u:p@localhost:5432/db',
+      FEED_SOURCE: 'fixture',
+    } as NodeJS.ProcessEnv;
+    expect(() => new ConfigService()).toThrow(/FEED_SOURCE/);
+  });
+
+  it('allows a real feed source in production', () => {
+    process.env = {
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgres://u:p@localhost:5432/db',
+      FEED_SOURCE: 'cricbuzz',
+    } as NodeJS.ProcessEnv;
+    expect(new ConfigService().get('FEED_SOURCE')).toBe('cricbuzz');
+  });
 });

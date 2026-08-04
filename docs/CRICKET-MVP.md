@@ -282,15 +282,24 @@ config incl. **cricket market-type schema** · and for real-money: `M5` KYC · `
 Each ends in a demonstrable proof (`MILESTONES.md` convention). Prefix **CM** = cricket milestone,
 distinct from the general `M`-series.
 
-### CM1 — Cricket feed is live · **L**
+### ✅ CM1 — Cricket feed is live · **L** — DONE 2026-08-04
 > **Proof:** a real match's ball-by-ball stream flows into `raw_ball_events`; an induced feed outage
 > suspends all cricket markets with **no fabricated prices**; the stored events replay to the same
-> state; and **prod config refuses to boot on a demo feed source** (D26).
+> state; and **prod config refuses to boot on the `fixture` source** — fixtures are fake recorded
+> data (D26's real-money tripwire is moot under D32, but "don't serve fake matches in prod" stands).
 
 `XC1.1` adapter behind the feed interface (Liskov-substitutable) · `XC1.2` fixtures + catalogue ·
 `XC1.3` ball/wicket/over event ingestion · `XC1.4` scorecard + results · `XC1.5` append-only store ·
 `XC1.6` feed-down → suspended, bets refused · `XC1.7` map source → internal schema (§2.3) · `XC1.8`
-env-config source selection + prod boot tripwire (D26) · `XC1.9` recorded-fixture replay source for CI.
+env-config `FEED_SOURCE` selection + tripwire (prod refuses the fake `fixture` source; real sources
+fine under D32) · `XC1.9` recorded-fixture replay source for CI.
+
+> **DONE — verified** (36 tests green, real Postgres). `CricketFeed` interface + `FixtureFeed`; ball
+> stream → append-only `raw_ball_event` (idempotent by `match_id, sequence`); **feed-down → match
+> suspended, zero fabricated balls**; score **replays purely from the raw store** (order-independent,
+> proven by property test); config **refuses `fixture` in prod**. **Deferred:** the live cricbuzz/HTTP
+> adapter (a stub behind the same interface — not testable here: network + token-gated); a richer
+> scorecard; "bets refused on a suspended match" is enforced at placement in **CM3**.
 
 ### CM2 — Markets priced and repricing live · **L**
 > **Proof:** a match shows all three groups; session lines reprice on every ball from the feed; a

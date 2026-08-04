@@ -21,7 +21,7 @@ just don't convert to money.
 
 ## Phase
 
-**Phase 0/1 — foundations DONE (M0 scaffold · M1 chip ledger · M2 accounts). CM1 (cricket feed) next.**
+**Foundations DONE (M0 · M1 · M2). Cricket engine started: CM1 (feed) DONE; CM2 (markets) next.**
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log
@@ -66,9 +66,10 @@ milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
 
 1. ✅ **M0 — scaffold**, ✅ **M1 — chip ledger**, ✅ **M2 — accounts & sessions** — DONE, all verified
    against real Postgres (`pnpm check` green, 28 tests). **The foundation is complete.**
-2. **CM1 — cricket feed** (`docs/CRICKET-MVP.md`) is next: the ball-by-ball adapter (demo source
-   cricbuzz11/fixtures, D26), append-only `raw_ball_events`, feed-down → markets suspended. This
-   starts the cricket engine — the path to a playable product.
+2. ✅ **CM1 — cricket feed** — DONE (feed interface + FixtureFeed, append-only `raw_ball_event`,
+   feed-down → suspend, pure replay; 36 tests green). **CM2 (markets + config) is next**: market
+   templates (match-odds / bookmaker / fancy-session), operator pricing, per-ball repricing driven
+   by the feed, and the market-type config surface (`docs/CRICKET-MVP.md` CM2).
 2. **M1 — chip ledger**: Postgres double-entry, reserve/settle in one transaction (D28/D33).
 3. **M2 — accounts & sessions**, then **CM1→CM6** (the cricket engine). CM6 is the playable product.
 

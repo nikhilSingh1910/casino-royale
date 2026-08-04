@@ -1,5 +1,11 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from '../../db';
+import { CricketRepo } from './cricket.repo';
+import { FeedIngestService } from './feed-ingest.service';
 
-/** Markets · betting · settlement — built across CM1–CM4. Placeholder for structure. */
-@Module({})
+@Module({
+  imports: [DatabaseModule],
+  providers: [CricketRepo, FeedIngestService],
+  exports: [FeedIngestService, CricketRepo],
+})
 export class CricketModule {}
