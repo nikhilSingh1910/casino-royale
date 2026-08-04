@@ -364,7 +364,10 @@ Tech blocker.
 2. Match surface and control fields are grounded in the reference platforms' **public** cricket
    product (`PRD.md` §5.2–5.3) and the top5050 client bundle fetched unauthenticated on 2026-08-04
    (§2.6). No authenticated session was used.
-3. Real-money launch still requires M5/M6/M7; the cricket engine can be demoed on play-money first.
-4. A cricket **ball-by-ball** feed exists to contract. **Unverified** which vendor covers the target
-   competitions at ball resolution — a C-b input, not assumed.
-5. Jurisdiction/legality of specific fancy markets is **out of Tech scope** by client instruction.
+3. **Play-money only, forever (D32)** — no real money in or out. M5/M6/M7 and licensing are out of
+   scope; CM6 is a playable product, not a pre-launch gate.
+4. A cricket **ball-by-ball** feed is available. Since no money settles (D32), no contract or
+   accountability bar applies; **unverified** which source best covers the target competitions at
+   ball resolution — a practical pick, not assumed.
+5. Jurisdiction/legality is **out of Tech scope** (client-owned) — and largely moot under D32, since
+   play-money cricket is not gambling in the licensing sense.
