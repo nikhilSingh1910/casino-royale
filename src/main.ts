@@ -4,6 +4,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { ConfigService } from './shared/config';
+import { DomainExceptionFilter } from './http/domain-exception.filter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -12,6 +13,7 @@ async function bootstrap(): Promise<void> {
     { bufferLogs: true },
   );
   app.useLogger(app.get(Logger));
+  app.useGlobalFilters(new DomainExceptionFilter());
   app.enableShutdownHooks();
 
   const config = app.get(ConfigService);

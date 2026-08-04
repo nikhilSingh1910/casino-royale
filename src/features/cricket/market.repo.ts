@@ -145,4 +145,26 @@ export class MarketRepo {
       .limit(limit)
       .execute();
   }
+
+  /** All of a match's runners with prices, tagged by market — one query for the market view (no N+1). */
+  async runnersForMatch(matchId: string, limit: number) {
+    return this.db
+      .selectFrom('market_runner as r')
+      .innerJoin('market as m', 'm.id', 'r.market_id')
+      .select(['r.market_id', 'r.id', 'r.runner_name', 'r.back_price', 'r.lay_price'])
+      .where('m.match_id', '=', matchId)
+      .limit(limit)
+      .execute();
+  }
+
+  /** All of a match's fancy lines with prices, tagged by market — one query for the market view. */
+  async fancyLinesForMatch(matchId: string, limit: number) {
+    return this.db
+      .selectFrom('fancy_market as f')
+      .innerJoin('market as m', 'm.id', 'f.market_id')
+      .select(['f.market_id', 'f.overs', 'f.line_value', 'f.back_price', 'f.lay_price'])
+      .where('m.match_id', '=', matchId)
+      .limit(limit)
+      .execute();
+  }
 }

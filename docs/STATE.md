@@ -99,7 +99,15 @@ milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
 
 Nothing blocks a playable demo. Remaining, roughly by value (all recorded in `docs/CRICKET-MVP.md`
 and the decision log):
-- **Frontend / design-parity track** — no UI yet; the product is API + services (review finding C22).
+- ✅ **Public cricket HTTP API** — DONE (D38, 109 tests green, real Postgres + Fastify e2e).
+  `GET /matches`, `GET /matches/:id` (public market view), `POST /bets` + `POST /runner-bets` (session-auth;
+  userId from the session, never the body); money as integer-minor-unit strings; one global
+  `DomainExceptionFilter` maps zod → 400 and typed domain errors to their 4xx (closed the deferred
+  "zod→400" gap app-wide).
+- **Frontend / design-parity track — NEXT.** Direction chosen: **"modern exchange refit"** (D38 — exchange
+  primitives with card surfaces, mobile-first). React + Vite + TS `web/` app on the API above: login →
+  match list → market view + bet slip → live wallet, all four UI states. *Then:* CORS for the web origin,
+  fiat display formatting (§5 rule 5). A client screenshot would tighten visual parity (HAR has no CSS).
 - **Per-runner operator liability / exposure** — the §5-rule-11 formula is binary; multi-runner needs a
   per-runner worst case (D37). Runner auto-suspend is off until then.
 - **Per-user stake factoring** (`XC3.7`/`XC5.3`) and **timed bet-delay** (`XC3.4`).

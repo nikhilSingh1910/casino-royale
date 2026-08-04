@@ -3,6 +3,7 @@ export { FeedIngestService } from './feed-ingest.service';
 export type { IngestResult, MarketRepricer } from './feed-ingest.service';
 export { CricketRepo } from './cricket.repo';
 export { MarketService } from './market.service';
+export type { MatchView, MarketView, RunnerView, FancyView } from './market.service';
 export { deriveScore, runsInOvers } from './match-state';
 export type { MatchScore } from './match-state';
 export { priceSessionRuns } from './pricing';

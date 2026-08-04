@@ -31,6 +31,16 @@ export class CricketRepo {
       .executeTakeFirst();
   }
 
+  /** Matches for the lobby, soonest first, bounded (CLAUDE.md §3.3). */
+  async listMatches(limit: number) {
+    return this.db
+      .selectFrom('cricket_match')
+      .select(['match_id', 'competition', 'name', 'status', 'starts_at'])
+      .orderBy('starts_at', 'asc')
+      .limit(limit)
+      .execute();
+  }
+
   /** Record the authoritative result (winning runner name) — the raw input runner settlement replays (D37). */
   async setResult(matchId: string, result: string): Promise<void> {
     await this.db.updateTable('cricket_match').set({ result }).where('match_id', '=', matchId).execute();

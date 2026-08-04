@@ -775,3 +775,41 @@ CM4 already covers); deriving the winner from balls (needs toss/batting-order mo
 **Consequence.** Match-odds and bookmaker are one runner path (placement + settlement) that reuses
 the ledger, the drain, and the audit trail. The playable end-to-end product (CM6) can place across all
 three groups and settle each from its authoritative input — balls for sessions, the result for runners.
+
+---
+
+### D38 — The web track: public cricket API first, "modern exchange refit" frontend next
+
+**Context.** With the cricket MVP complete (services + tests, no UI), the next track is the frontend.
+Grounding surfaced two facts: (1) there were **no cricket HTTP endpoints** — only auth/account/trading
+— so a frontend had nothing to call; (2) the top5050 HAR the client provided is **API-only** (54 JSON
+responses, no CSS/screenshots), so it fixes the *data model* but carries **nothing** about the rendered
+visual design. Pixel-parity with a site never seen rendered can't be claimed honestly (§1).
+
+**Decision (chosen by the client, 2026-08-05).**
+1. **Sequence: API first, frontend next.** This cycle builds the **public cricket HTTP API**; the React
+   frontend is the following cycle. Keeps each cycle fully verifiable — the API is proven against real
+   Postgres + Fastify, not hand-waved behind an unbuilt UI.
+2. **The API surface.** Reads are public (view markets pre-login): `GET /matches` (lobby),
+   `GET /matches/:id` (match + markets → runners for odds/bookmaker, line+prices for fancy). Writes
+   require a session (the `userId` is the caller's, **never** from the body): `POST /bets` (fancy),
+   `POST /runner-bets`. Money crosses the wire as **integer-minor-unit strings**, parsed to bigint at
+   the edge — no float, no bigint-in-JSON. Bets reuse `PlacementService` — no second placement path.
+3. **One error map.** A global `DomainExceptionFilter` (`src/http/`) maps zod → 400 and every typed
+   domain error (`BetRejectedError`, `NotEligibleError`, reservation/action errors…) to its proper
+   4xx — app-wide, closing the deferred "zod→400" gap. A positive-integer DTO keeps a 0 stake a 400,
+   not a 500 from the ledger's positivity guard.
+4. **Design direction: "modern exchange refit."** The frontend will use the exchange primitives
+   (back/lay price ladder, session strip, bet slip) with card surfaces, spacing and mobile-first
+   sizing — the client's pick over the denser "classic Diamond" look. It is a **faithful recreation of
+   the exchange genre grounded in the HAR data model**, not a pixel-match; a client screenshot would
+   let a later cycle tighten parity.
+
+**Deferred to the frontend cycle:** CORS (needs the real web origin); currency **display** formatting
+(§5 rule 5 — the API returns raw minor units, the UI formats to fiat); the React app itself. **Minor
+hardening:** a concurrent-bet TOCTOU at reserve can still surface a ledger error as a 500 (the common
+insufficient-funds case is pre-checked → 400); mapping `LedgerError` is a small follow-up.
+
+**Consequence.** The product now has a real HTTP contract a frontend (or the client) can drive, proven
+end to end through Fastify. The visual build is scoped and its direction chosen, with the parity caveat
+recorded rather than overclaimed.

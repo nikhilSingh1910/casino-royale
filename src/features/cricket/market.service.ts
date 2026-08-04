@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Chips } from '../../shared/money';
 import { price } from '../../shared/odds';
-import { MarketType } from '../../db';
+import { MarketStatus, MarketType } from '../../db';
 import { CricketRepo } from './cricket.repo';
 import { MarketRepo } from './market.repo';
 import { MarketRepricer } from './feed-ingest.service';
@@ -9,7 +9,36 @@ import { priceSessionRuns } from './pricing';
 
 const FANCY_WINDOWS = [6, 10] as const;
 const MARKETS_MAX = 100;
+const RUNNERS_MAX = 1200;
 const BALLS_MAX = 5000;
+
+export interface RunnerView {
+  id: string;
+  name: string;
+  back: bigint;
+  lay: bigint;
+}
+export interface FancyView {
+  line: number;
+  overs: number;
+  back: bigint;
+  lay: bigint;
+}
+export interface MarketView {
+  id: string;
+  type: MarketType;
+  name: string;
+  status: MarketStatus;
+  runners: RunnerView[];
+  fancy: FancyView | null;
+}
+export interface MatchView {
+  id: string;
+  name: string;
+  competition: string;
+  status: string;
+  markets: MarketView[];
+}
 
 @Injectable()
 export class MarketService implements MarketRepricer {
@@ -84,5 +113,45 @@ export class MarketService implements MarketRepricer {
   async reopenMarket(marketId: string): Promise<void> {
     const m = await this.repo.getMarketWithFancy(marketId);
     if (m?.status === 'suspended') await this.repo.setStatusForMarket(marketId, 'open');
+  }
+
+  /** The lobby list — matches, soonest first (public read). */
+  listMatches() {
+    return this.cricketRepo.listMatches(MARKETS_MAX);
+  }
+
+  /** The market-view payload: a match with its markets, runners and fancy lines. One read per kind (no N+1). */
+  async getMatchView(matchId: string): Promise<MatchView | null> {
+    const match = await this.cricketRepo.getMatch(matchId);
+    if (!match) return null;
+    const [markets, runners, fancies] = await Promise.all([
+      this.repo.marketsForMatch(matchId, MARKETS_MAX),
+      this.repo.runnersForMatch(matchId, RUNNERS_MAX),
+      this.repo.fancyLinesForMatch(matchId, MARKETS_MAX),
+    ]);
+
+    const runnersByMarket = new Map<string, RunnerView[]>();
+    for (const r of runners) {
+      const arr = runnersByMarket.get(r.market_id) ?? [];
+      arr.push({ id: r.id, name: r.runner_name, back: r.back_price, lay: r.lay_price });
+      runnersByMarket.set(r.market_id, arr);
+    }
+    const fancyByMarket = new Map<string, FancyView>();
+    for (const f of fancies) fancyByMarket.set(f.market_id, { line: f.line_value, overs: f.overs, back: f.back_price, lay: f.lay_price });
+
+    return {
+      id: match.match_id,
+      name: match.name,
+      competition: match.competition,
+      status: match.status,
+      markets: markets.map((m) => ({
+        id: m.id,
+        type: m.market_type,
+        name: m.name,
+        status: m.status,
+        runners: runnersByMarket.get(m.id) ?? [],
+        fancy: fancyByMarket.get(m.id) ?? null,
+      })),
+    };
   }
 }
