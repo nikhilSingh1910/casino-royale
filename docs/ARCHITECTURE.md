@@ -6,6 +6,12 @@ on *why* at the decision level, `CLAUDE.md` on *how* we write code. This documen
 Every invariant in `CLAUDE.md` §4 is a constraint on this design, not a suggestion the design
 accommodates.
 
+> **⚠️ Phase 1 (play-money cricket) uses a TRIMMED stack — D33.** The chip ledger is a **double-entry
+> table in Postgres**, so the two-store money seam (§2), TigerBeetle, immudb, Temporal, Hyperswitch
+> and the matching engine below are the **real-money design, superseded for Phase 1** and retained as
+> reference. For what is actually built now, read `docs/CRICKET-MVP.md` + D32 + D33. The trimmed
+> stack: **Postgres + Redis + Centrifugo + a job queue + lightweight auth.**
+
 ---
 
 ## 0. The shape

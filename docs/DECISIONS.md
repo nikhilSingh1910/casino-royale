@@ -608,3 +608,37 @@ deleted** (all preserved in git):
 / engagement) and app-store "simulated gambling" / social-casino rules are the client's business and
 legal concern (Appendix A.5), not Tech's. Roughly half the prior compliance/payments scope is gone;
 the cricket game itself is unchanged.
+
+---
+
+### D33 — Trim the infra for play-money: one Postgres store (Phase 1)
+
+**Context.** D32 made the product play-money only. TigerBeetle (D5), immudb (D8), Temporal (D9) and
+Hyperswitch (D7) were chosen for real-money settlement correctness, regulatory-grade audit, durable
+money workflows and payments — none of which applies to virtual chips.
+
+**Decision.** For the Phase-1 play-money cricket game:
+- **Chip ledger = a double-entry table in Postgres. Drop TigerBeetle (D5).** Chips, bets, markets and
+  the ledger all live in one store, so a bet placement or a settlement is a **single ACID
+  transaction**. The entire two-store money seam collapses: no intent-then-execute, no sweeper, no
+  cross-store reconciliation, no transfer-id/idempotency-key mapping. D17 and the cross-store parts
+  of D28–D30 no longer apply.
+- **Drop immudb (D8).** Back-office actions and chip-economy audit go to an append-only Postgres
+  table — game-integrity/anti-fraud grade, not cryptographic-regulatory.
+- **Drop Temporal (D9)** for a light durable job queue (pg-boss on Postgres, or BullMQ on Redis) for
+  settlement jobs. The workflows are event-driven and short now, not long money sagas.
+- **Drop Hyperswitch (D7) and OpenSanctions** — no payments, no sanctions screening.
+- **Defer** ClickHouse (analytics), Kafka (Postgres outbox + Redis/NATS suffices), and fine-grained
+  OpenFGA (basic player/admin RBAC is enough).
+- **No matching engine in Phase 1** — cricket is operator-priced (D25); the matching engine is
+  exchange-only (Phase 2).
+- **Keep:** Postgres (everything), Redis (sessions/cache/fan-out), Centrifugo (live price/score
+  push), lightweight auth (Ory Kratos or similar, no verification tiers), the cricket feed adapter,
+  TypeScript (D27).
+
+**Consequence.** The trimmed stack is essentially **Postgres + Redis + Centrifugo + a job queue +
+auth.** The hardest part of the project — the two-store money seam and its failure modes — is gone.
+D28 (reserve chips) and D29 (no overspend) hold as ordinary in-transaction logic; D30 (currency) and
+D31 (chargebacks) are moot/void. Double-entry discipline is retained as a Postgres table (the chip
+ledger is still the only authority on chips, still balanced, still append-only). `ARCHITECTURE.md`
+§2/§12's two-store design is retained as the real-money reference, superseded for Phase 1.

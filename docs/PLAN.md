@@ -72,21 +72,19 @@ The highest-priority work in the project. Everything else assumes it is correct.
 |---|---|---|
 | A1 | Money type — integer minor units, arithmetic, explicit directional rounding | `CLAUDE.md` §3.1. No float, `bigint` at boundaries |
 | A2 | **Two** price types — exchange ladder (tick↔price, increments, validation) **and** sportsbook scaled integers | §5.4. Off-ladder prices unrepresentable **for the exchange only**; feed prices are arbitrary decimals and must not be forced onto the ladder (`CLAUDE.md` §3.1) |
-| A3 | Ledger — TigerBeetle client, account model, transfer primitives | D5. Accounts: user cash · user bonus · user reserved · house commission · house liability · PSP suspense |
-| A4 | Idempotency helper — the single implementation | §5.6. Every money path uses it |
-| A5 | Reconciliation job — ledger ↔ relational, break reporting | Runs from day one, not added later |
+| A3 | Chip ledger — **double-entry table in Postgres** (D33), accounts, in-transaction operations | Accounts: `user_chips` · `user_reserved` · `house`. No TigerBeetle |
+| A4 | Idempotency helper — the single implementation | §5.6. Every chip operation uses it |
+| A5 | Integrity check + settlement job queue (D33) | `sum(reserved)==reserved balance`; ledger sums to zero. No cross-store reconciliation |
 
-**Exit gate.** Property tests pass: the ledger always balances; **no *wager* path** reaches a
-negative available balance; `available + reserved` accounts for every unit deposited less that
-withdrawn, won and lost; and `sum(reserved over open orders) == reserved account balance` per user.
-Ledger reconciles under a concurrent load fixture. *(Must match `docs/MILESTONES.md` M1's proof
-verbatim — these are the same gate stated twice.)*
+**Exit gate.** Property tests pass: the chip ledger always balances; **no bet path drives a balance
+negative**; `available + reserved` accounts for every chip topped-up less won/lost; and
+`sum(reserved rows) == reserved balance` per user. Holds under concurrent placement/settlement.
+*(Must match `docs/MILESTONES.md` M1's proof.)*
 
-> ⚠️ **A3 is gated on `docs/ARCHITECTURE.md` §12 items 1, 3(a) and 8.** The account model is missing
-> a dispute-suspense account and a currency dimension, and the `reserve / capture / release`
-> primitive vocabulary points at TigerBeetle two-phase pending transfers, which cannot survive
-> partial fills (D19, primary-verified). See the ⚠️ markers on `A3.2`, `A3.3` and `A4.5` in
-> `docs/MILESTONES.md`.
+> **A3 simplified by D33 (play-money, one store):** the chip ledger is a Postgres double-entry table;
+> reserve/settle happen inside the placement/settlement transaction. The old two-store concerns
+> (TigerBeetle, dispute-suspense, currency dimension, partial-fill reservation) are gone — retained
+> only in the real-money reference.
 
 ### Workstream B — Identity core
 

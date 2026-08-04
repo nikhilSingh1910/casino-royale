@@ -20,7 +20,7 @@ only**, so the licensing/KYC/payments half is retained as reference but out of s
 | [`docs/PLAN.md`](docs/PLAN.md) | Build sequence by workstream and phase |
 | [`docs/MILESTONES.md`](docs/MILESTONES.md) | 16 milestones (M0–M15), each ending in a demonstrable proof |
 | **[`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md)** | **The active track.** Cricket-only Phase 1 — plan, architecture, CM-series milestones |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D32, append-only. Authoritative on *why*. **D32 governs scope** |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D33, append-only. Authoritative on *why*. **D32/D33 govern scope + stack** |
 | [`docs/REVIEW-FINDINGS.md`](docs/REVIEW-FINDINGS.md) | Output of the 2026-08-04 adversarial review — 142 findings and their disposition |
 
 ---

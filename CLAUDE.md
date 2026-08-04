@@ -285,42 +285,43 @@ operations produces a negative withdrawable balance.
 
 Violating one of these is a design error, not a style disagreement.
 
-**The ledger is the only money.** Double-entry, append-only, balanced. No balance column anywhere
-else is authoritative — any balance shown to a user or used in a decision is derived from ledger
-entries. Corrections are new compensating entries; **nothing is ever updated or deleted.**
+> **Reframed by D32 (play-money) and D33 (single Postgres store).** The invariants below now govern
+> **virtual chips in one Postgres store**. The two-store seam is gone; the gambling-compliance
+> invariants (fail-closed KYC/self-exclusion gates, self-exclusion-no-override) are **out of scope
+> under D32**, retained only as real-money reference.
 
-**State and money live in different stores, in one direction.** The relational database holds
-users, bets, markets and orders. The ledger holds funds. Money moves **ledger-first**; the
-relational row records the reference. A bet is never "placed" in one store and unfunded in the
-other — the idempotency key ties them, and continuous reconciliation proves it (§5.6).
+**The chip ledger is the only authority on chips.** Double-entry, append-only, balanced — a table in
+Postgres (D33). No balance column anywhere else is authoritative; any balance shown or used in a
+decision is derived from ledger entries. Corrections are new compensating entries; **nothing is ever
+updated or deleted.**
 
-**Every money-affecting operation is idempotent by key.** Deposits, wagers, settlements, voids,
-payouts, and *every* provider callback. Duplicate callbacks from a casino aggregator are routine
-traffic, not an exceptional case — the second one must be a no-op returning the first result, not
-a second credit.
+**State and chips live in one store (D33).** Users, bets, markets and the chip ledger are all in
+Postgres, so a bet placement or settlement is a **single ACID transaction** — a bet can never be
+recorded-but-unfunded. This collapses the former two-store seam (intent-then-execute, sweeper,
+cross-store reconciliation, D17), retained only in the real-money reference (`ARCHITECTURE.md` §2).
 
-**No credit, ever.** A wager may only be placed against settled, deposited, currently-available
-funds. **No *wager* path permits a negative available balance** (D31 — the rescope from "no path":
-a chargeback on already-lost money books to a house dispute-suspense account, not to the customer's
-spendable balance, so the invariant holds where it must without breaking on a real chargeback), and
-no path issues credit to a user or an intermediary. This is the single most important structural
-difference from the reference platforms (`PRD.md` §4) and it is enforced in the ledger, not in the UI.
+**Every chip-affecting operation is idempotent by key.** Bet placement, settlement, void, chip
+top-up. A retried request is a no-op returning the first result, never a second chip movement.
+Within one transaction this is a unique-key check, not a cross-store dance.
 
-**Compliance gates fail closed.** Age, identity, jurisdiction, self-exclusion, and limit checks
-run before the action, and any error or timeout in a gate **blocks** the action. A gate that
-cannot reach a national self-exclusion register does not "allow through and log" — it refuses.
+**No negative chip balance, ever.** A bet may only be placed against currently-available chips. No
+path lets a balance go negative or issues chips as credit. (D31/chargebacks is void under D32, so
+this reverts to the simple form — there is no real payment to reverse.) Enforced in the ledger, not the UI.
 
-**Self-exclusion has no override capability in code.** Not gated behind a permission, not behind
-a feature flag, not behind a dual-authorisation flow. The function does not exist. Build it so
-that "reverse a self-exclusion early" is an impossible request, not a refused one.
+**Eligibility checks fail closed (reduced under D32).** The heavy gates — KYC, self-exclusion
+registers, jurisdiction — are out of scope for play-money. Any check that does remain (account
+status, an app age-gate) still blocks on error rather than allowing through.
 
-**Reservation precedes exposure.** Funds for a wager — stake for a back, `(odds − 1) × stake` for
-a lay — are reserved at **submission**, not at match and not at settlement. An unmatched resting
-order still holds its reservation.
+**~~Self-exclusion has no override~~ — out of scope under D32.** Statutory RG does not apply to
+play-money; retained in the real-money reference.
 
-**Settlement is append-only and replayable.** Results are stored raw as received. Any settlement
-can be recomputed from stored inputs. Manual settlement override requires dual authorisation and
-writes an immutable audit record — the override is a recorded event, never an edit.
+**Reservation precedes exposure.** Chips for a bet — stake for a back, `(odds − 1) × stake` for a
+lay — are reserved at **placement** as part of the same transaction (D28). Operator-priced cricket
+has no resting orders, so it is a single fixed reservation, captured or released at settlement.
+
+**Settlement is append-only and replayable.** Ball events are stored raw as received. Any settlement
+can be recomputed from them. Manual override writes an append-only audit record (D33 — Postgres, not
+immudb) — a recorded event, never an edit.
 
 **The feed proposes; the platform disposes.** No external input — odds feed, provider callback,
 result service — mutates a balance or settles a market directly. It produces a validated event

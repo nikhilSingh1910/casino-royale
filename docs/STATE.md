@@ -25,7 +25,7 @@ just don't convert to money.
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log
-(**D1–D32**, append-only).
+(**D1–D33**, append-only).
 
 **Nothing blocks the build.** The four M1-gating architectural decisions were signed off
 (D28–D31, though D31/chargebacks is now void under D32) and D6 confirmed (D27). B1 (jurisdiction) no
@@ -35,8 +35,8 @@ longer gates us — with no real money, licensing is the client's concern, not a
 
 - **Cricket engine** — feed, markets (match-odds / bookmaker / fancy-session), operator pricing,
   in-play suspension/repricing, ball-by-ball settlement. `docs/CRICKET-MVP.md`.
-- **Chip-economy ledger** — clean double-entry so chips can't be duplicated or lost. Bar is *game
-  integrity*, not financial audit.
+- **Chip-economy ledger** — double-entry table in **Postgres** (D33), so chips can't be duplicated
+  or lost. Bar is *game integrity*, not financial audit.
 - **Accounts** — login + chip balance + chip top-ups (free / daily bonus / etc.), no verification tiers.
 - **Feed** — cricbuzz11 or any cheap source is fine (no money settles; D26's accountability bar is gone).
 
@@ -46,23 +46,27 @@ Gambling licence + jurisdiction gating · KYC/AML (M5) · statutory RG + self-ex
 · real payments + Hyperswitch (M7, D7) · chargebacks + dispute-suspense (D31) · regulatory reporting
 (M12) · player-funds segregation · gaming duty / financial model.
 
-## Open — worth a decision, not blocking
+## Stack — trimmed for play-money (D33)
 
-- **Trim the infra stack?** For play-money chips, **Hyperswitch is cut** (no payments); **immudb
-  (D8) and TigerBeetle (D5) are arguably overkill** — the game-integrity bar may be met by a simpler
-  store. Not yet re-decided; flagged in D32.
-- **Currency** collapses to one chip currency (D30 simplified).
+**Postgres + Redis + Centrifugo + a job queue + lightweight auth.** The chip ledger is a double-entry
+table in Postgres, so a bet or settlement is a single ACID transaction — **the two-store money seam,
+sweeper and reconciliation are gone** (the hardest part of the project). Dropped: TigerBeetle,
+immudb, Temporal, Hyperswitch, OpenSanctions. Deferred: ClickHouse, Kafka. No matching engine
+(cricket is operator-priced).
+
+## Open — not blocking
+
 - **Monetisation** (ads / subscription / engagement) and app-store "simulated gambling" rules — the
   client's business/legal call (Appendix A.5), not Tech's.
 
 ## Next actions
 
-1. **Decide the infra trim** (above) before M1 — it changes the ledger workstream.
-2. **Begin M0 — scaffold** (`docs/MILESTONES.md`): repo structure, layer-boundary lint,
+1. **Begin M0 — scaffold** (`docs/MILESTONES.md`): repo structure, layer-boundary lint,
    config-at-boot, CI rules. Nothing gates it.
-3. **M1 — chip ledger** to the signed-off money decisions (D28 reserve, D29 sync; one currency).
-4. **Cricket engine (CM1→CM6)** on `docs/CRICKET-MVP.md` — feed → markets → placement → settlement.
-   No real-money track to run in parallel now, so this *is* the path to a playable product.
+2. **M1 — chip ledger**: the Postgres double-entry table (D33), reserve/settle in one transaction
+   (D28). No TigerBeetle, no sweeper.
+3. **Cricket engine (CM1→CM6)** on `docs/CRICKET-MVP.md` — feed → markets → placement → settlement.
+   This *is* the path to a playable product; no real-money track to run alongside.
 
 ## Notes
 

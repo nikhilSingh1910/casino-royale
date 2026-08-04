@@ -61,11 +61,11 @@ be desirable UX, but they are not the statutory RG regime.
 
 | Shared | Role in cricket MVP |
 |---|---|
-| **M0** scaffold, **M1** money core | The ledger, money type, reservation. Cricket uses the *simple* reservation path (§2.2) |
+| **M0** scaffold, **M1** money core | The **Postgres chip ledger** (D33), chip type, reservation. Cricket uses the single-transaction path (§2.2) |
 | **M2** identity + fail-closed gates | `assertCanWager()` runs before every cricket bet |
 | **M3** / Workstream D — jurisdiction config | **Cricket market types are config entries here.** The client's enable/limit/lock switches live in this schema |
-| **M5** KYC · **M6** RG · **M7** payments | Real-money launch blockers, unchanged, in parallel |
-| Back-office audit wrapper (C4) | Every cricket trading action writes through it |
+| ~~M5 KYC · M6 RG · M7 payments~~ | **Out of scope (D32)** — no real money, no launch blockers |
+| Back-office audit wrapper (C4) | Every trading action writes through it — to an append-only **Postgres** audit table (D33), not immudb |
 | `CLAUDE.md` §3.1 sportsbook scaled-integer prices | Cricket prices are decimals (e.g. 1.90) — scaled integers, **not** exchange ladder ticks (A2.4) |
 | `CLAUDE.md` §5 rules 2 & 11 | `calculateCustomerExposure()` and `calculateOperatorLiability()` — both used, and distinct |
 
@@ -90,7 +90,7 @@ flowchart LR
     RAW --> SETTLE["settlement<br/>per over-block / wicket"]
     SETTLE --> LEDGER
     TRADER["trading console<br/>suspend · lock · limit · void"] --> MKT
-    TRADER --> IMMU[("immudb audit")]
+    TRADER --> AUDIT[("Postgres audit (D33)")]
 ```
 
 ### 2.2 The money model is the *simple* one — this is the crux
@@ -107,24 +107,28 @@ exchange:
 - **Back bet** (user backs an outcome): reserve **stake**.
 - **Lay / "No" bet** (user bets against): reserve **liability = (odds − 1) × stake**.
 
-Either way the amount is **known and fixed at placement**, captured as **one posted transfer
-`cash → reserved`** (the recommended mechanism from `ARCHITECTURE.md` §12 item 1). On settlement:
+Either way the amount is **known and fixed at placement**. Under **D33** the whole thing is a
+**single Postgres transaction**: debit `user_chips`, credit `user_reserved`, insert the bet — atomic,
+so a bet can never be recorded-but-unfunded, and `no negative chip balance` is a check inside that
+transaction. Settlement is another transaction:
 
-- **Win:** `reserved → user cash` (their stake back) **+** `house_liability → user cash` (winnings).
+- **Win:** `reserved → user_chips` (stake back) **+** `house → user_chips` (winnings).
 - **Loss:** `reserved → house`.
 
-**The exchange's partial-fill failure (D19, §12 item 1) does not bite here** — there is nothing to
-partially post. That is precisely why cricket can ship before the exchange reservation design is
-finalised.
+**None of the two-store machinery applies.** No TigerBeetle, no intent-then-execute, no sweeper, no
+cross-store reconciliation, no transfer-id poisoning — those were D17/§12 concerns for the real-money
+*two-store* design, and D33 collapsed them into one ACID transaction. Double-entry is kept as
+discipline (every movement balanced, append-only) to keep the chip economy honest, not because a
+regulator needs it.
 
-**§12 items that *do* still gate cricket** (all Phase-0, unretrofittable per D5):
+**What the former §12 money items reduce to under D32/D33:**
 
-| §12 item | Applies to cricket? |
+| Item | Under play-money, one store |
 |---|---|
-| **2** sync-vs-async money paths | **Yes.** Bet placement must be synchronous — you cannot accept a bet you cannot fund |
-| **3(a)** currency in the account/ID scheme | **Simplified** — one chip currency under D32 (D30) |
-| **8** chargebacks | **Void under D32** — no real payments to charge back |
-| **1** reservation mechanism | **Only the simple case** — full-stake posted transfer. Partial-fill capture is exchange-only, deferred |
+| Reservation (1) | A debit/credit pair in one transaction. The exchange's partial-fill problem never arises — operator-priced, no order book |
+| Sync vs async (2) | Moot — one local transaction; nothing to sequence across stores |
+| Currency (3a) | One chip currency (D30 collapsed) |
+| Chargebacks (8) | Void — no real payments (D31) |
 
 ### 2.3 Cricket domain model
 
@@ -277,7 +281,7 @@ ticks.
 > a market breaching its liability cap **auto-suspends**; a locked market rejects bets; a moved line
 > rejects on price-check; `calculateCustomerExposure()` on the bet slip agrees with the risk console.
 
-`XC3.1` two-phase placement (accept/reject on move) · `XC3.2` full-stake reservation `cash→reserved`
+`XC3.1` two-phase placement (accept/reject on move) · `XC3.2` full-stake reservation `chips→reserved`
 (§2.2) · `XC3.3` `calculateCustomerExposure()` + `calculateOperatorLiability()` · `XC3.4` bet delay ·
 `XC3.5` `FancyBetLock` / `FancySectionLock` · `XC3.6` per-market liability cap + auto-suspend ·
 `XC3.7` per-user stake factoring · idempotent by placement key.
@@ -289,7 +293,7 @@ ticks.
 
 `XC4.1` micro-settlement triggers (over-block, wicket, innings, match) · `XC4.2` resolver per market
 group · `XC4.3` void rules (abandonment, no-result) · `XC4.4` compensating-entry resettlement ·
-`XC4.5` dual-auth manual override → immudb.
+`XC4.5` dual-auth manual override → append-only Postgres audit (D33).
 
 ### CM5 — Trading console + integrity · **L**
 > **Proof:** an operator suspends a market, voids a bet and resettles through the console — every

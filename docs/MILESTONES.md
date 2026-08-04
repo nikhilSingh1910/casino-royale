@@ -58,17 +58,10 @@ M1, M2 and M3 run largely in parallel once M0 lands.
 
 ## 🟢 M1 — Money is provably correct · **XL**
 
-> **Proof:** property tests pass — the ledger always balances; **no *wager* path reaches a negative
-> available balance**; `available + reserved` accounts for every unit deposited less that withdrawn,
-> won and lost; and `sum(reserved over open orders) == reserved account balance` per user. Ledger
-> reconciles clean after a concurrent load fixture with induced mid-operation failures.
->
-> **Two corrections 2026-08-04.** (1) The invariant was "no operation sequence reaches a negative
-> available balance" — false once chargebacks exist, since a chargeback on money already wagered
-> and lost *requires* a negative position or a suspense account (§12 item 8). Scoped to wager paths.
-> (2) "Reserved never exceeds cash" was ambiguous, since reserved funds move *out of* cash and the
-> two are disjoint. Replaced with the reconciliation invariant that actually catches a wrong release
-> amount, a lost release, or a double release.
+> **Proof:** property tests pass — the chip ledger always balances (every entry a balanced
+> debit/credit pair); **no bet path drives a balance negative**; `available + reserved` accounts for
+> every chip topped-up less won/lost; and `sum(reserved rows) == reserved balance` per user. Holds
+> under concurrent placement/settlement — one Postgres transaction per operation (D33).
 
 The highest-priority work in the project. Everything else assumes it.
 
@@ -90,38 +83,27 @@ The highest-priority work in the project. Everything else assumes it.
 > price to the nearest tick. `CLAUDE.md` §3.1 now specifies two representations; `A2.4`/`A2.5` make
 > that concrete.
 
-**Ledger [A3]** — §12 items signed off 2026-08-04 (D28–D31); the decided approach is below.
+**Chip ledger [A3]** — a double-entry table in Postgres (D33); no TigerBeetle.
 
-- [ ] `A3.1` TigerBeetle client wrapper in `ledger/` — the only caller in the codebase
-- [ ] `A3.2` Account model **per user per currency** (D30 — currency via the TigerBeetle `ledger`
-      field, encoded in the account-ID scheme from the first account minted): user cash · user
-      bonus · user reserved · house commission · house liability · house **dispute-suspense** (D31,
-      chargebacks) · PSP suspense
-- [ ] `A3.3` Transfer primitives (D28): **reserve = posted transfer `cash→reserved`** (one
-      `reserved` account/user, `timeout=0`, attribution in Postgres, invariant
-      `sum(open reservations)==reserved balance`), release, payout, commission, **`reverse`** (D31).
-      **Not** two-phase pending transfers — those cannot survive partial fills (D19)
-- [ ] `A3.4` Balance derivation — available, reserved, withdrawable. No stored authoritative balance
+- [ ] `A3.1` Ledger module in `ledger/` — the only writer of `ledger_entries`. Every movement is a
+      balanced debit/credit pair, append-only
+- [ ] `A3.2` Accounts (one chip currency, D30 collapsed): `user_chips` · `user_reserved` · `house`.
+      No dispute-suspense (D31 void), no per-currency dimension
+- [ ] `A3.3` Operations as in-transaction debit/credit pairs: reserve, release, capture, settle-win,
+      settle-loss, top-up — each inside the placement/settlement transaction (D28)
+- [ ] `A3.4` Balance derivation — available, reserved — from ledger entries. No stored authoritative balance
 
-**The seam [A4, D17]**
-- [ ] `A4.1` `money_operation` table — status, caller idempotency key, **precomputed** transfer ID.
-      **Must carry a UNIQUE constraint on the caller idempotency key.** Without it, the same key
-      arriving on two nodes mints two transfer IDs and debits twice — and the ledger still balances,
-      so nothing detects it (review finding C6)
-- [ ] `A4.5` Transfer-id strategy (D28): the id is **generated once per operation and stored** with
-      the intent; a *transient* failure retries under a **fresh id**, never the poisoned one
-      (`id_already_failed` is permanent, D19 quote 7). Idempotency is enforced by the UNIQUE caller
-      key on `money_operation` (A4.1), so a duplicate key never mints a second id — one operation,
-      one net effect
-- [ ] `A4.2` Idempotency helper — the single implementation (§5.6)
-- [ ] `A4.3` Intent → execute → confirm wrapper; every money path goes through it
-- [ ] `A4.4` Test: crash injected between commit and execute leaves a recoverable state
+**Idempotency & atomicity [A4]** — the two-store seam (D17) collapses under D33.
+- [ ] `A4.1` UNIQUE key on every chip-affecting request (bet, settlement, top-up) so a retry is a
+      no-op — a constraint in the transaction, not a cross-store dance
+- [ ] `A4.2` Placement and settlement each run as a **single ACID transaction** (bet/market state +
+      ledger entries together) — atomic, no intent-then-execute, no sweeper
+- [ ] `A4.3` Idempotency helper — the single implementation (§5.6)
 
-**Sweeper & reconciliation [A5]** — ships now, not when breaks appear
-- [ ] `C3.1` Temporal deployed; worker skeleton; dead-letter state
-- [ ] `A5.1` Sweeper — `PENDING` beyond threshold → look up transfer by ID → resolve
-- [ ] `A5.2` Reconciliation — ledger ↔ relational, with break report
-- [ ] `A5.3` Concurrent load fixture with induced failures; reconciliation proof
+**Jobs & integrity check [A5]** — no sweeper needed (single store).
+- [ ] `C3.1` Light durable job queue (pg-boss / BullMQ) for settlement jobs — dead-letter on failure
+- [ ] `A5.1` Integrity check: ledger sums to zero; `sum(reserved rows) == reserved balance` per user
+- [ ] `A5.2` Concurrent placement/settlement test — no lost or duplicated chip movement
 
 ---
 
