@@ -346,16 +346,16 @@ Provider callbacks are the highest-volume money path and the one most likely to 
 
 | Failure | Behaviour |
 |---|---|
-| ⚠️ TigerBeetle unavailable | **Contested — see §12 item 2.** This row says all money operations halt and nothing is accepted. §2.2's intent-first design says the opposite for some paths, and §3.1 shows a third behaviour. **Three documents, three answers, on the highest-risk failure in the system.** The proposed resolution is in §12; until it is signed off, treat this row as *aspiration, not specification* |
+| TigerBeetle unavailable | **Resolved (D29).** Money-*committing* paths (wagers, casino debits, withdrawal reservation) are synchronous and **halt** — no bet accepted. Money-*in* paths (deposits) use intent-then-execute and complete via the sweeper. A leader election is ~90s of refused bets; accepted, and no path accepts an unfunded bet to preserve uptime |
 | Matching engine shard down | That market suspends. Sportsbook and casino unaffected |
-| ⚠️ Matching engine restart | Replays command log; book rebuilt. *"Reservations already durable in ledger"* **is only true if `timeout = 0`** — TigerBeetle returns the full amount to the original account on expiry (D19 quote 3), silently and with no domain event. See §12 item 1 |
+| Matching engine restart | Replays command log; book rebuilt. Reservations are durable because they are **posted transfers into the `reserved` account with `timeout = 0`** (D28) — no silent expiry |
 | Feed down | Affected markets go unavailable and accept no bets. **No fabricated prices** (`CLAUDE.md` §3.10) |
 | Self-exclusion register unreachable | Deposit and login blocked for affected users. Fails closed |
 | Provider callback duplicated | No-op returning the first result — **provided `money_operation` carries a UNIQUE constraint on the caller idempotency key** (`MILESTONES.md` A4.1). Without it, two nodes mint two transfer IDs and debit twice, and the ledger still balances |
 | Provider callback during our outage | Provider retries; idempotency makes replay safe |
-| ⚠️ Postgres commit succeeds, TigerBeetle call lost | Sweeper completes it — **unless the transfer failed on a transient error.** `id_already_failed` is permanent: that ID *"will always fail upon retry, even if the underlying issue is resolved"* (D19 quote 7). The retry path is poisoned and the operation can never reach `COMPLETE`. See §12 item 1 |
+| Postgres commit succeeds, TigerBeetle call lost | Sweeper completes it. On a *transient* failure the operation retries with a **fresh transfer id** — never the poisoned one (`id_already_failed` is permanent, D19 quote 7). Id strategy is A4.5 (D28) |
 | Settlement arrives twice | Idempotent by result ID; second is a no-op |
-| ⚠️ Partial fill races a cancel | **This row is wrong as written.** Single-writer-per-market orders events *inside the engine*, but the release amount is computed in the platform process from a read model that can be stale — so a cancel arriving just after a fill can release funds belonging to a matched bet. Determinism in the engine does not make the money correct. See §12 item 4 |
+| Partial fill races a cancel *(exchange only)* | **Phase-2 concern (§12 item 4, deferred).** Does not arise in the cricket MVP — operator-priced betting has no order book. For the exchange, the release amount must be a value the engine *returns*, not derived from a read model |
 
 ---
 
@@ -367,7 +367,7 @@ Named so they are decisions rather than omissions:
   when analytics or cross-service event volume justifies the operational weight — not before.
 - **Per-domain services.** §1. The seams exist; extraction is deferred until measured need.
 - **Multi-region.** Single region until a second jurisdiction requires data residency (D13).
-- **A JVM or Rust matching engine.** D6 is provisional: TypeScript behind a narrow interface,
+- **A JVM or Rust matching engine.** D6 is **confirmed** (D27): TypeScript behind a narrow interface,
   replaced only if measured load demands it.
 - **Read replicas for the operational store.** ClickHouse absorbs analytics; replicas are premature
   until a measured read problem exists.
@@ -381,7 +381,7 @@ Named so they are decisions rather than omissions:
 | The ledger is the only money | §2.3 — nothing outside `ledger/` reaches TigerBeetle; balances derived, never stored |
 | State and money in one direction | §2.2 — intent → execute → confirm, with a sweeper |
 | Every money operation idempotent | §2.2, §7 — caller key plus precomputed transfer ID |
-| No credit, ever | §3.1 — reservation precedes the book; insufficient funds rejects at submission |
+| No credit, ever (no *wager* path goes negative — D31) | §3.1 — reservation precedes the book; insufficient funds rejects at submission |
 | Compliance gates fail closed | §5 — cache miss plus provider down equals block |
 | Self-exclusion has no override | §5.1 — plus revocation terminates live sessions |
 | Reservation precedes exposure | §3.1 |
@@ -393,23 +393,24 @@ Named so they are decisions rather than omissions:
 
 ---
 
-## 12. Open — architectural decisions pending sign-off
+## 12. Architectural decisions — the M1-gating four are signed off
 
-Surfaced by the 2026-08-04 review. **None of these has been decided.** Documentation defects from
-that review have been corrected; these are design choices and are held for the client.
+Surfaced by the 2026-08-04 review. **The four M1-gating items (1, 2, 3a, 8) were signed off on
+2026-08-04 — D28–D31 — and D6 confirmed (D27).** Items 4 and 6 are exchange-only and stay deferred
+to Phase 2; item 7 is blocked on GGL verification; item 5 was withdrawn to the compliance cycle.
 
 | # | Decision | Status | Blocks |
 |---|---|---|---|
-| **1** | **Reservation mechanism.** Two-phase pending transfers cannot survive partial fills (D19). Recommended: posted transfers cash→`reserved`, one `reserved` account per user, attribution in Postgres, guarded by the invariant `sum(open reservations) == reserved balance`. | Recommended, unsigned | A3.2, A3.3 |
-| **2** | **Sync vs async money paths.** §2.2, §3.1 and §9 currently give three incompatible readings of TigerBeetle-down behaviour. Proposed rule: **synchronous wherever insufficient funds must block the action; asynchronous everywhere else.** Wagers, casino debits and withdrawal *reservation* are synchronous; deposits, withdrawal *execution*, settlement and commission are not. Consequence to state explicitly: synchronous paths bound platform availability to TigerBeetle availability — a leader election is ~90s of refused bets. | Proposed, unsigned | §9, D17 |
-| **3** | **Currency.** **Now primary-verified (D19 quote 5):** TigerBeetle's `ledger` field *"partitions the sets of accounts that can transact with each other"* and must match on **both** accounts in a transfer — so **cross-currency transfers are impossible**, and a EUR user can never match against a SEK user in one book. *Two questions follow.* (a) Encoding currency in the ledger/account-ID scheme is **unretrofittable and must be settled before M1** (D5). (b) Whether the book partitions per currency, or runs a single settlement currency with wallet-level FX, is deferrable to Phase 2 — but it directly worsens the liquidity problem that already gates the exchange (D11), so weigh it when the exchange business case is revisited. | (a) urgent · (b) deferred | A3.1 |
+| **1** | **Reservation mechanism.** Two-phase pending transfers cannot survive partial fills (D19). Recommended: posted transfers cash→`reserved`, one `reserved` account per user, attribution in Postgres, guarded by the invariant `sum(open reservations) == reserved balance`. | **Signed off — D28** | A3.2, A3.3 |
+| **2** | **Sync vs async money paths.** §2.2, §3.1 and §9 currently give three incompatible readings of TigerBeetle-down behaviour. Proposed rule: **synchronous wherever insufficient funds must block the action; asynchronous everywhere else.** Wagers, casino debits and withdrawal *reservation* are synchronous; deposits, withdrawal *execution*, settlement and commission are not. Consequence to state explicitly: synchronous paths bound platform availability to TigerBeetle availability — a leader election is ~90s of refused bets. | **Signed off — D29** | §9, D17 |
+| **3** | **Currency.** **Now primary-verified (D19 quote 5):** TigerBeetle's `ledger` field *"partitions the sets of accounts that can transact with each other"* and must match on **both** accounts in a transfer — so **cross-currency transfers are impossible**, and a EUR user can never match against a SEK user in one book. *Two questions follow.* (a) Encoding currency in the ledger/account-ID scheme is **unretrofittable and must be settled before M1** (D5). (b) Whether the book partitions per currency, or runs a single settlement currency with wallet-level FX, is deferrable to Phase 2 — but it directly worsens the liquidity problem that already gates the exchange (D11), so weigh it when the exchange business case is revisited. | **(a) signed off — D30** · (b) deferred | A3.1 |
 | **4** | **Cancel-ack becomes money-authoritative.** The release amount must be a value the matching engine *returns*, never derived from a read model — §9's single-writer claim only orders events inside the engine, while the release is issued from the platform process. Widens the engine interface. Failure direction is safe (over-holding). | Recommended, unsigned | Phase 2, N |
 | **5** | *(Withdrawn — moved to the later compliance cycle.)* | — | — |
 | **6** | **Gross vs net reservation.** Gross recommended at launch: netting collapses when one leg of a matched position is voided, and void semantics are themselves unspecified. Display both figures with distinct labels rather than one ambiguous number. Netting is a Phase 3 optimisation contingent on void semantics first. | Recommended, unsigned | Phase 2, O |
 | **7** | **Precomputed player-tier projection** for the German behavioural qualification — a 90-day query cannot sit in the casino callback path. Decreases apply immediately via the D18 revocation channel; increases on scheduled recalculation. | Blocked on GGL primary verification | WD1, M3 |
-| **8** | **Chargebacks.** Needs a house dispute-suspense account, a `reverse` primitive, and a user state carrying outstanding debt. `CLAUDE.md` §4's invariant must be rescoped to **"no *wager* path permits a negative available balance"** — as written it is false the first time a chargeback lands, and would fail A1.4 in CI on a real production event. | Recommended, unsigned | A3.2, A3.3 |
+| **8** | **Chargebacks.** Needs a house dispute-suspense account, a `reverse` primitive, and a user state carrying outstanding debt. `CLAUDE.md` §4's invariant must be rescoped to **"no *wager* path permits a negative available balance"** — as written it is false the first time a chargeback lands, and would fail A1.4 in CI on a real production event. | **Signed off — D31** | A3.2, A3.3 |
 
-**Must be settled before M1 starts** — 1, 2, 3(a), 8. All four are ledger-shaped, which is
-consistent: D5 makes the ledger the only true point of no return in Phase 0.
+**Settled 2026-08-04 (D28–D31)** — items 1, 2, 3(a), 8, the four that gated M1. All ledger-shaped;
+D5 made them the point of no return, so they were resolved before A3. **M1 is unblocked.**
 
-**Deferred to Phase 2 exchange scoping** — 1(partial-fill mechanics), 3(b), 4, 6.
+**Deferred to Phase 2 exchange scoping** — 1(partial-fill capture mechanics), 3(b), 4, 6.

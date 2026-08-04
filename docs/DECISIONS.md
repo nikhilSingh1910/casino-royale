@@ -500,3 +500,73 @@ HAR), so server-side pulls may be rate-limited or blocked — **recorded fixture
 the CI source regardless** (CM1's proof needs replayable stored events anyway). This is a demo/dev
 convenience, **not** an endorsement of the source for production, and not a settlement source for
 real money.
+
+---
+
+### D27 — D6 confirmed (no longer provisional)
+
+**Decision.** As of 2026-08-04 the client confirmed D6: TypeScript platform, matching engine in
+TypeScript behind a narrow interface, `exchange-core`/LMAX as design references, replaced with
+JVM/Rust only if measured load demands.
+
+**Consequence.** M0 scaffolding is unblocked. The "provisional" qualifier is lifted; the interface
+remains the hedge.
+
+---
+
+### D28 — Reservation is a posted transfer into a per-user `reserved` account (§12 item 1, signed off)
+
+**Context.** D19 proved TigerBeetle two-phase pending transfers cannot survive partial fills.
+
+**Decision.** Reserve funds as a **posted transfer `cash → reserved`**, one `reserved` account per
+user, with `timeout = 0`. Per-bet/per-order attribution lives in Postgres. A continuous invariant
+holds it honest: **`sum(open reservations in Postgres) == reserved account balance`**, per user. For
+cricket (operator-priced) the reservation is a single fixed amount at placement; the exchange's
+partial-fill *capture* mechanics remain deferred to Phase 2.
+
+**Consequence.** Replaces the `reserve/capture/release` two-phase vocabulary. Correctness comes from
+the invariant, not from application discipline maintained forever. Unblocks A3.2/A3.3.
+
+---
+
+### D29 — Money paths: synchronous where funds must block, async elsewhere (§12 item 2, signed off)
+
+**Context.** §2.2, §3.1 and §9 gave three incompatible readings of TigerBeetle-down behaviour.
+
+**Decision.** **Synchronous against the ledger wherever insufficient funds must block the action** —
+wagers, casino debits, withdrawal *reservation*. **Asynchronous everywhere else** — deposits,
+withdrawal *execution*, settlement, commission. This resolves the §9 contradiction: money-committing
+paths halt when TigerBeetle is unavailable; money-in paths use intent-then-execute + the sweeper.
+
+**Consequence.** Synchronous paths bound platform availability to TigerBeetle availability — a leader
+election is ~90s of refused bets. Accepted. **No path may accept an unfunded bet to preserve
+uptime.** D17's "one pattern everywhere" is corrected to two, keyed on this rule.
+
+---
+
+### D30 — Currency encoded in the ledger/account-ID scheme (§12 item 3a, signed off)
+
+**Context.** TigerBeetle's `ledger` field partitions accounts; cross-currency transfers are
+impossible (D19 quote 5), and D5 says the account scheme cannot be retrofitted.
+
+**Decision.** Encode currency via the TigerBeetle `ledger` field and reserve space for it in the
+account-ID derivation, from the first account minted. One set of accounts per user per currency.
+Book partitioning vs single-settlement-currency-with-FX (item 3b) stays deferred to Phase 2.
+
+**Consequence.** A second currency later is new accounts on a new ledger, not a re-derivation of
+live IDs. Unblocks A3.1/A3.2.
+
+---
+
+### D31 — Chargebacks: dispute-suspense account + `reverse`; invariant rescoped (§12 item 8, signed off)
+
+**Context.** A chargeback on money already wagered and lost requires a negative position, which the
+"no negative available balance" invariant forbade — it would fail A1.4 in CI on a real event.
+
+**Decision.** Add a **house dispute-suspense account** and a **`reverse`** primitive to the ledger,
+plus a user state carrying outstanding debt. Rescope `CLAUDE.md` §4 to **"no *wager* path permits a
+negative available balance"** (not "no path"). A chargeback books to dispute-suspense, never to the
+customer's spendable balance.
+
+**Consequence.** A1.4's property test is scoped to wager paths, so it no longer fails on a real
+chargeback. Unblocks A3.2/A3.3.

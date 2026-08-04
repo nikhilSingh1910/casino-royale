@@ -11,12 +11,14 @@ Last updated: **2026-08-04**
 **Phase 0 — Licensing & foundations. No code written.**
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
-`docs/CRICKET-MVP.md`, `docs/REVIEW-FINDINGS.md`, and the decision log (**D1–D25**, append-only).
+`docs/CRICKET-MVP.md`, `docs/REVIEW-FINDINGS.md`, and the decision log (**D1–D31**, append-only).
 
 A multi-agent adversarial review ran on **2026-08-04** — 142 findings, compiled in
 `docs/REVIEW-FINDINGS.md`, with a primary-source verification log at §8b.
-**Documentation and factual corrections have been applied. The architectural decisions it
-surfaced have not** — see `docs/ARCHITECTURE.md` §12.
+**All corrections applied, and the four M1-gating architectural decisions were signed off on
+2026-08-04 (D28–D31), with D6 confirmed (D27). M0 and M1 are unblocked** — see
+`docs/ARCHITECTURE.md` §12. What remains open there is exchange-only (items 4, 6 — Phase 2) or
+blocked on GGL (item 7).
 
 > **Active track: CRICKET-ONLY MVP.** The client narrowed Phase 1 to the cricket product
 > (2026-08-04 — D24, D25). The near-term execution spec is **`docs/CRICKET-MVP.md`** — plan,
@@ -41,15 +43,18 @@ surfaced have not** — see `docs/ARCHITECTURE.md` §12.
 **B1 is the one that matters.** Everything downstream is guesswork until answered.
 See `PRD.md` §16 for the full question set.
 
-### Architectural sign-offs
+### Architectural sign-offs — ✅ done 2026-08-04
 
-| # | Decision | Blocks |
+| Decision | → | Status |
 |---|---|---|
-| **D6** | TypeScript platform, matching engine behind an interface — the one decision marked *provisional* | **M0** (repo scaffold) |
-| **§12 items 1, 2, 3(a), 8** | Reservation mechanism · sync-vs-async money paths · currency in the account-ID scheme · chargebacks | **M1 / Workstream A** — all ledger-shaped and unretrofittable per D5 |
+| D6 — TypeScript, matching engine behind an interface | D27 | **Confirmed** — M0 unblocked |
+| §12 item 1 — reservation = posted transfer `cash→reserved`, per-user account, invariant | D28 | **Signed off** |
+| §12 item 2 — sync where funds must block; async elsewhere | D29 | **Signed off** |
+| §12 item 3a — currency in the ledger/account-ID scheme | D30 | **Signed off** |
+| §12 item 8 — chargebacks: dispute-suspense, `reverse`, invariant rescoped | D31 | **Signed off** |
 
-**M0 is blocked only on D6.** The §12 items block **M1**, not M0 — scaffolding, lint and CI can
-proceed while the ledger decisions are being made.
+**M0 and M1 are both unblocked.** The remaining §12 items are exchange-only (4, 6 — Phase 2) or
+blocked on GGL (7); none gates the cricket MVP.
 
 ## Not blocked — startable now
 
@@ -65,13 +70,15 @@ the sense that matters: none needs to know *which* regulator before starting.
 
 ## Next actions
 
-1. **Sign off `docs/ARCHITECTURE.md` §12 items 1, 2, 3(a) and 8.** Three tasks in M1 (`A3.2`,
-   `A3.3`, `A4.5`) are marked ⚠️ and must not be implemented as written until this is done.
-2. Confirm or overrule **D6**, which unblocks M0.
-3. Put `PRD.md` §7 (feature disposition) and §16 (open questions) to the client. Get §7 signed off
-   before any estimate is given — `PRD.md` Appendix A.1 explains why.
-4. Then **M0 → M1** (`docs/MILESTONES.md`). A5's sweeper is not deferrable; it is the completion
-   half of the D17 write, not a safety net.
+**M0 and M1 are unblocked (D27–D31, 2026-08-04). The build can start.**
+
+1. **Begin M0 — scaffold** (`docs/MILESTONES.md`): repo structure, layer-boundary lint,
+   config-at-boot, CI rules. Nothing gates it.
+2. **Then M1 — money core**, built to the signed-off decisions: per-user-per-currency accounts incl.
+   dispute-suspense (D30/D31); reservation as a posted transfer `cash→reserved` (D28); sync/async
+   money paths (D29). A5's sweeper is not deferrable; it is the completion half of the D17 write.
+3. Put `PRD.md` §7 (feature disposition) and §16 (open questions) to the client — the remaining
+   gating items are client-side, **B1 (jurisdiction)** above all.
 5. **Start the cricket engine now on the demo feed** (D26) — cricbuzz11 or recorded fixtures behind
    the XC1.1 adapter; no contract needed to build XC1→XC5 / CM1→CM6 on **play-money**. The
    contracted production provider (SportMonks / CricketData — C-b) must be signed before **CM6 /

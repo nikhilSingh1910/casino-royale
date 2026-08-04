@@ -300,9 +300,11 @@ traffic, not an exceptional case — the second one must be a no-op returning th
 a second credit.
 
 **No credit, ever.** A wager may only be placed against settled, deposited, currently-available
-funds. There is no code path that permits a negative available balance, and none that issues
-credit to a user or an intermediary. This is the single most important structural difference from
-the reference platforms (`PRD.md` §4) and it is enforced in the ledger, not in the UI.
+funds. **No *wager* path permits a negative available balance** (D31 — the rescope from "no path":
+a chargeback on already-lost money books to a house dispute-suspense account, not to the customer's
+spendable balance, so the invariant holds where it must without breaking on a real chargeback), and
+no path issues credit to a user or an intermediary. This is the single most important structural
+difference from the reference platforms (`PRD.md` §4) and it is enforced in the ledger, not in the UI.
 
 **Compliance gates fail closed.** Age, identity, jurisdiction, self-exclusion, and limit checks
 run before the action, and any error or timeout in a gate **blocks** the action. A gate that

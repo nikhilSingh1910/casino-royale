@@ -19,7 +19,7 @@ the build plan.
 | [`docs/PLAN.md`](docs/PLAN.md) | Build sequence by workstream and phase |
 | [`docs/MILESTONES.md`](docs/MILESTONES.md) | 16 milestones (M0–M15), each ending in a demonstrable proof |
 | **[`docs/CRICKET-MVP.md`](docs/CRICKET-MVP.md)** | **The active track.** Cricket-only Phase 1 — plan, architecture, CM-series milestones |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D25, append-only. Authoritative on *why* |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | D1–D31, append-only. Authoritative on *why* |
 | [`docs/REVIEW-FINDINGS.md`](docs/REVIEW-FINDINGS.md) | Output of the 2026-08-04 adversarial review — 142 findings and their disposition |
 
 ---
@@ -34,14 +34,12 @@ exchange are deferred (D24, D25).
 
 Blocking:
 
-- **B1 — target jurisdiction not chosen.** Determines KYC timing, permitted market types, RG
-  defaults, reporting obligations and data residency. Most of Phase 1 is guesswork until answered.
-- **Four architectural decisions** in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §12 — items
-  1, 2, 3(a) and 8. All are ledger-shaped and unretrofittable under D5, so they must be settled
-  before Workstream A begins.
+- **B1 — target jurisdiction not chosen** (client-owned). Determines KYC timing, permitted market
+  types, RG defaults, reporting and residency. Gates real-money launch, not the build — the cricket
+  engine builds on play-money regardless.
 
-Phase 0 has four workstreams (A–D) and none needs to know which jurisdiction before starting.
-Workstream C (scaffold) is gated only on D6; Workstream A is gated on §12.
+The four M1-gating architectural decisions (§12 items 1, 2, 3a, 8) were **signed off 2026-08-04
+(D28–D31), and D6 confirmed (D27)** — so **M0, M1 and the cricket engine can all start now.**
 
 ---
 

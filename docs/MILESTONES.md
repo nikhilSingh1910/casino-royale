@@ -86,20 +86,17 @@ The highest-priority work in the project. Everything else assumes it.
 > price to the nearest tick. `CLAUDE.md` §3.1 now specifies two representations; `A2.4`/`A2.5` make
 > that concrete.
 
-**Ledger [A3]** — ⚠️ **three items below are gated on `docs/ARCHITECTURE.md` §12. Do not implement
-them as currently written.**
+**Ledger [A3]** — §12 items signed off 2026-08-04 (D28–D31); the decided approach is below.
 
 - [ ] `A3.1` TigerBeetle client wrapper in `ledger/` — the only caller in the codebase
-- [ ] ⚠️ `A3.2` Account model: user cash · user bonus · user reserved · house commission ·
-      house liability · PSP suspense
-      — **incomplete as written.** Missing a **house dispute-suspense** account (§12 item 8,
-      chargebacks) and any **currency dimension** (§12 item 3a — TigerBeetle fixes currency per
-      `ledger` at account-creation time, and D5 says this cannot be retrofitted)
-- [ ] ⚠️ `A3.3` Transfer primitives: reserve, release, capture, payout, commission
-      — **this vocabulary is known-wrong.** `reserve/capture/release` points implementers at
-      TigerBeetle two-phase pending transfers, which **cannot survive partial fills** (D19,
-      primary-verified). Rewrite against §12 item 1 before implementing. `reverse` is also missing
-      (§12 item 8)
+- [ ] `A3.2` Account model **per user per currency** (D30 — currency via the TigerBeetle `ledger`
+      field, encoded in the account-ID scheme from the first account minted): user cash · user
+      bonus · user reserved · house commission · house liability · house **dispute-suspense** (D31,
+      chargebacks) · PSP suspense
+- [ ] `A3.3` Transfer primitives (D28): **reserve = posted transfer `cash→reserved`** (one
+      `reserved` account/user, `timeout=0`, attribution in Postgres, invariant
+      `sum(open reservations)==reserved balance`), release, payout, commission, **`reverse`** (D31).
+      **Not** two-phase pending transfers — those cannot survive partial fills (D19)
 - [ ] `A3.4` Balance derivation — available, reserved, withdrawable. No stored authoritative balance
 
 **The seam [A4, D17]**
@@ -107,10 +104,11 @@ them as currently written.**
       **Must carry a UNIQUE constraint on the caller idempotency key.** Without it, the same key
       arriving on two nodes mints two transfer IDs and debits twice — and the ledger still balances,
       so nothing detects it (review finding C6)
-- [ ] `A4.5` Decide whether the transfer ID is **derived from** the idempotency key rather than
-      generated independently — §12 item 1. Note `id_already_failed` is permanent: a transfer ID
-      that fails on a transient error *"will always fail upon retry, even if the underlying issue is
-      resolved"* (D19 quote 7), so a naive derived-ID scheme poisons the sweeper's retry path
+- [ ] `A4.5` Transfer-id strategy (D28): the id is **generated once per operation and stored** with
+      the intent; a *transient* failure retries under a **fresh id**, never the poisoned one
+      (`id_already_failed` is permanent, D19 quote 7). Idempotency is enforced by the UNIQUE caller
+      key on `money_operation` (A4.1), so a duplicate key never mints a second id — one operation,
+      one net effect
 - [ ] `A4.2` Idempotency helper — the single implementation (§5.6)
 - [ ] `A4.3` Intent → execute → confirm wrapper; every money path goes through it
 - [ ] `A4.4` Test: crash injected between commit and execute leaves a recoverable state
@@ -459,5 +457,5 @@ had slack, which is only true if the contracts land early.
 and is actually cross-cutting: registration, login, deposit, wager, marketing, back-office, plus
 the D18 revocation channel.
 
-> **M1 additionally gated on `docs/ARCHITECTURE.md` §12 items 1, 2, 3(a) and 8.** Three tasks
-> inside it (`A3.2`, `A3.3`, `A4.5`) are marked ⚠️ and must not be implemented as written.
+> **§12 items 1, 2, 3(a) and 8 were signed off 2026-08-04 (D28–D31).** `A3.2`, `A3.3` and `A4.5`
+> now reflect the decided approach — no longer blocked.
