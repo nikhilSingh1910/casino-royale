@@ -129,6 +129,10 @@ FancyMarket → Line(value, yesPrice, noPrice)                         (repriced
 Bet → (market, selection, lineValueAtPlacement, priceAtPlacement, stake, status)
 ```
 
+**This internal schema is the contract every feed adapter maps into** — validated against the
+observed top5050 structure (`event`, `fancy[]`, `market[]`, from the 2026-08-04 HAR capture). Dev
+code depends on this schema, never on a provider's raw payload (D26).
+
 Bet lifecycle (operator-priced — reuses the sportsbook state machine, `PRD.md` §11.4, **not** the
 exchange order lifecycle):
 
@@ -151,6 +155,17 @@ defining technical dependency and the defining risk.
   Settlement must **resettle via compensating entries** under dual authorisation (K), never edit.
 - **Feed down = markets suspended, no fabricated prices** (`CLAUDE.md` §3.10). A cricket book that
   invents a line during a feed gap is mispricing live liability.
+
+**Provider strategy — demo vs prod (D26).** The source is environment-configured and pluggable:
+
+- **Demo / dev:** `cricbuzz11.in` or recorded fixtures — play-money, so the accountability bar does
+  not apply.
+- **Prod (real money):** a contracted, identifiable provider with an SLA (**SportMonks** / CricketData
+  to trial — C-b). A **boot tripwire refuses to start prod on a demo source** (`CLAUDE.md` §3.11).
+- **The adapter maps every source into the internal schema (§2.3)** — dev never couples to a
+  provider's raw shape, so the prod swap is a new adapter, not a rewrite.
+- `cricbuzz11.in` is a third-party endpoint likely referrer/token-gated; server-side pulls may be
+  blocked, so **recorded fixtures are the fallback and the CI source** regardless.
 
 ### 2.5 In-play: suspension, repricing, bet delay
 
@@ -219,7 +234,7 @@ config incl. **cricket market-type schema** · and for real-money: `M5` KYC · `
 
 | Code | Workstream | Depends on |
 |---|---|---|
-| **XC1** | Cricket feed adapter — fixtures, ball-by-ball, scorecard, results; append-only `raw_ball_events` | M0; cricket feed contract |
+| **XC1** | Cricket feed adapter — fixtures, ball-by-ball, scorecard, results; append-only `raw_ball_events`; maps every source into the internal schema | M0. **Demo:** cricbuzz11/fixtures, no contract · **Prod:** contracted provider (D26, C-b) |
 | **XC2** | Market model + pricing/line engine — templates, operator pricing, per-ball repricing | M1, XC1 |
 | **XC3** | Placement + operator risk — two-phase placement, full-stake reservation, exposure/liability, delays, locks, caps, auto-suspend | M1, M2, XC2 |
 | **XC4** | In-play settlement — per over-block / per wicket, append-only, replayable, dual-auth resettle | XC1, XC3 |
@@ -235,11 +250,12 @@ distinct from the general `M`-series.
 ### CM1 — Cricket feed is live · **L**
 > **Proof:** a real match's ball-by-ball stream flows into `raw_ball_events`; an induced feed outage
 > suspends all cricket markets with **no fabricated prices**; the stored events replay to the same
-> state.
+> state; and **prod config refuses to boot on a demo feed source** (D26).
 
 `XC1.1` adapter behind the feed interface (Liskov-substitutable) · `XC1.2` fixtures + catalogue ·
 `XC1.3` ball/wicket/over event ingestion · `XC1.4` scorecard + results · `XC1.5` append-only store ·
-`XC1.6` feed-down → suspended, bets refused.
+`XC1.6` feed-down → suspended, bets refused · `XC1.7` map source → internal schema (§2.3) · `XC1.8`
+env-config source selection + prod boot tripwire (D26) · `XC1.9` recorded-fixture replay source for CI.
 
 ### CM2 — Markets priced and repricing live · **L**
 > **Proof:** a match shows all three groups; session lines reprice on every ball from the feed; a
@@ -303,9 +319,9 @@ be proven on play-money before it lands.
 
 **External dependencies — flag with owners at kickoff:**
 
-- **Cricket ball-by-ball feed contract** — the gating dependency (the equivalent of B3, cricket-
-  specific). Nothing in XC1 onward is buildable against a feed that is not signed, and ball-level
-  cricket coverage is a specialist product.
+- **Cricket ball-by-ball feed contract** — gates **production only** (D26). Demo/dev builds on
+  cricbuzz11/fixtures with no contract, so XC1 onward starts now; the contracted provider must be
+  signed before CM6 / real-money go-live. Ball-level cricket coverage is a specialist product.
 - The §12 sign-offs (items 2, 3a, 8) still gate M1, and therefore everything.
 
 ---
@@ -315,7 +331,7 @@ be proven on play-money before it lands.
 | # | Decision | Recommendation |
 |---|---|---|
 | C-a | **Match-odds: operator-priced or true exchange for MVP?** | **Operator-priced.** Keeps the whole MVP off the order book and off D11. Add the exchange in Phase 2 |
-| C-b | **Feed vendor** | Needs a cricket ball-by-ball specialist. Evaluate against settlement latency, correction handling, coverage of target competitions |
+| C-b | **Feed vendor** | **Resolved (D26).** Demo = cricbuzz11/fixtures. Prod = contracted provider: **SportMonks** primary candidate (€29–129/mo, EU, ball-by-ball, verified) or CricketData.org; premium only if SLA/rights demand. Final prod pick still to trial against latency, correction handling, competition coverage |
 | C-c | **Pricing: build vs licence** | Licence a cricket pricing/model feed initially; do not build a cricket model from scratch (`PRD.md` §9.2 non-goal) |
 | C-d | **Feed redundancy** | A single feed is a single point of settlement truth. Decide whether a second source cross-checks before it drives money |
 

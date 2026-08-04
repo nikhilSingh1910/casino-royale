@@ -470,3 +470,33 @@ Still required and unchanged: §12 items **2** (sync money paths — a bet canno
 **3(a)** (currency in the account scheme) and **8** (chargebacks). The cricket book also carries
 **operator risk** on the highest-integrity-risk markets in sport, so the risk console and integrity
 monitoring (`docs/CRICKET-MVP.md` §2.6, CM5) ship early rather than late.
+
+---
+
+### D26 — Cricket feed: pluggable demo source, contracted provider on prod
+
+**Context.** Cricket engineering (XC1 onward) needs a ball-by-ball source now, but contracting an
+identifiable provider with an SLA takes time. The feed adapter (XC1.1) already makes the source
+swappable. The client chose to start on a third-party source and settle the production provider
+later (2026-08-04).
+
+**Decision.** The feed source is **environment-configured and pluggable**:
+- **Demo / dev:** `cricbuzz11.in` *or* recorded fixtures. Play-money only, so the
+  settlement-accountability bar does not apply.
+- **Production (real money):** a **contracted, identifiable provider with an SLA and correction
+  protocol** — SportMonks (€29–129/mo, EU, ball-by-ball, verified 2026-08-04) or CricketData.org to
+  trial; premium (Sportradar/Genius) only if the SLA/rights bar demands it. Final selection is C-b.
+- **A prod boot tripwire refuses to start** if the configured feed is a demo source
+  (`CLAUDE.md` §3.11 config validation).
+- **The adapter maps every source into our internal event schema** — modelled on the observed
+  top5050 structure (`event / fancy[] / market[]`, 2026-08-04 HAR). Dev code depends on the internal
+  schema, never on a provider's raw payload.
+
+**Consequence.** Cricket engineering starts immediately without waiting on a feed contract, and the
+prod swap is a new adapter file, not a rewrite — provided the schema boundary holds. The tripwire
+stops the demo feed reaching production. Caveats: `cricbuzz11.in` is a third-party endpoint not
+offered to us as a service and likely referrer/token-gated (like the `lt-fn` Akamai feed seen in the
+HAR), so server-side pulls may be rate-limited or blocked — **recorded fixtures are the fallback and
+the CI source regardless** (CM1's proof needs replayable stored events anyway). This is a demo/dev
+convenience, **not** an endorsement of the source for production, and not a settlement source for
+real money.

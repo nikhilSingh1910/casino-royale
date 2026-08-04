@@ -72,11 +72,12 @@ the sense that matters: none needs to know *which* regulator before starting.
    before any estimate is given — `PRD.md` Appendix A.1 explains why.
 4. Then **M0 → M1** (`docs/MILESTONES.md`). A5's sweeper is not deferrable; it is the completion
    half of the D17 write, not a safety net.
-5. **Sign the cricket ball-by-ball feed contract** — the gating external dependency for the cricket
-   MVP (`docs/CRICKET-MVP.md` §6, decision C-b). Ball-level cricket coverage is a specialist feed,
-   distinct from a general odds-data deal. Nothing in XC1 onward builds without it.
-6. Cricket engine (XC1→XC5 / CM1→CM6) can be built and demoed on **play-money** before M5/M6/M7
-   land — those run in parallel and only rejoin at CM6 for real-money go-live.
+5. **Start the cricket engine now on the demo feed** (D26) — cricbuzz11 or recorded fixtures behind
+   the XC1.1 adapter; no contract needed to build XC1→XC5 / CM1→CM6 on **play-money**. The
+   contracted production provider (SportMonks / CricketData — C-b) must be signed before **CM6 /
+   real-money go-live**, not before work starts. A boot tripwire keeps the demo feed out of prod.
+6. Cricket runs parallel to the compliance/payments track (M5/M6/M7); they only rejoin at CM6 for
+   real-money go-live.
 
 ## Open questions carried
 
