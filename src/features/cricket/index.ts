@@ -11,3 +11,7 @@ export { PlacementService, BetRejectedError } from './placement.service';
 export type { PlaceBetInput } from './placement.service';
 export { calculateCustomerExposure, calculateOperatorLiability } from './exposure';
 export type { BetPosition } from './exposure';
+export { SettlementService } from './settlement.service';
+export type { MarketSettlement, Correction, SettleStatus } from './settlement.service';
+export { resolveFancyBet, sessionRuns, sessionComplete } from './settlement';
+export type { SessionOutcome } from './settlement';

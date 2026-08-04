@@ -21,7 +21,7 @@ just don't convert to money.
 
 ## Phase
 
-**Foundations DONE (M0·M1·M2). Cricket: CM1·CM2·CM3 DONE; CM4 (in-play settlement) next.**
+**Foundations DONE (M0·M1·M2). Cricket: CM1·CM2·CM3·CM4 DONE; CM5 (trading console + integrity) next.**
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log
@@ -73,10 +73,18 @@ milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
    idempotent + crash-heal (deterministic `reservationId`). *Deferred:* timed bet delay, per-user stake
    factoring, section-level locks, match-odds/bookmaker placement, reserve+bet atomicity saga
    (`docs/CRICKET-MVP.md` CM3).
-3. **CM4 (in-play settlement) is next**: a session market settles at over-block completion **from the
-   stored `raw_ball_event` fold**, a simulated correction **resettles via compensating entries**, and a
-   replay reproduces identical ledger effects (`docs/CRICKET-MVP.md` CM4). Then CM5 (trading console +
-   integrity) and CM6 (end-to-end playable product).
+3. ✅ **CM4 — in-play settlement** — DONE (76 tests green, real Postgres). Fancy/session settlement is a
+   pure fold over the append-only ball store + the one ledger (D35): over-block completion settles,
+   back/lay resolve against the struck line, **void** returns stakes, **resettlement** corrects a
+   flipped result via one **compensating** ledger txn (reserved untouched, ledger still balances),
+   all idempotent by key. *Deferred:* match-odds/bookmaker settlement, multi-innings, per-wicket/match
+   triggers, dual-auth SoD enforcement (→CM5), durable job-queue trigger, clawback-beyond-balance
+   suspense (`docs/CRICKET-MVP.md` CM4).
+4. **CM5 (trading console + integrity) is next**: an operator suspends/locks/voids/resettles through a
+   console — every action in the immutable audit log with operator + before/after; **SoD enforced**
+   (adjuster ≠ approver); exposure by match/market/user; session-integrity flags surface. This is where
+   the `IdentityRepo.audit` writer is promoted to the shared `AuditService` (per its own note). Then
+   CM6 (end-to-end playable product).
 
 ## Notes
 

@@ -119,7 +119,7 @@ export class MarketRepo {
     if (!m) return undefined;
     const fancy = await this.db
       .selectFrom('fancy_market')
-      .select(['line_value', 'back_price', 'lay_price'])
+      .select(['overs', 'line_value', 'back_price', 'lay_price'])
       .where('market_id', '=', marketId)
       .executeTakeFirst();
     return { ...m, fancy: fancy ?? null };

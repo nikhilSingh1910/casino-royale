@@ -1,8 +1,38 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
-import { BetSide, Database, KYSELY } from '../../db';
+import { BetSide, BetStatus, Database, KYSELY } from '../../db';
 import { chips } from '../../shared/money';
 import { BetPosition } from './exposure';
+
+/** What settlement needs about a bet: how to resolve it (side/line), what to pay (potential_payout), and which reservation to move (D35). */
+export interface SettlementRow {
+  id: string;
+  userId: string;
+  reservationId: string;
+  side: BetSide;
+  lineValue: number;
+  potentialPayout: bigint;
+  status: BetStatus;
+}
+const SETTLEMENT_COLS = ['id', 'user_id', 'reservation_id', 'side', 'line_value', 'potential_payout', 'status'] as const;
+interface SettlementQueryRow {
+  id: string;
+  user_id: string;
+  reservation_id: string;
+  side: BetSide;
+  line_value: number;
+  potential_payout: bigint;
+  status: BetStatus;
+}
+const toSettlementRow = (r: SettlementQueryRow): SettlementRow => ({
+  id: r.id,
+  userId: r.user_id,
+  reservationId: r.reservation_id,
+  side: r.side,
+  lineValue: r.line_value,
+  potentialPayout: r.potential_payout,
+  status: r.status,
+});
 
 export interface CreateBet {
   idempotencyKey: string;
@@ -84,5 +114,33 @@ export class BetRepo {
       .limit(limit)
       .execute();
     return rows.map(toPosition);
+  }
+
+  /** Open bets on a market, everything settlement needs to resolve and pay them (D35). */
+  async openBetsForMarket(marketId: string, limit: number): Promise<SettlementRow[]> {
+    const rows = await this.db
+      .selectFrom('bet')
+      .select(SETTLEMENT_COLS)
+      .where('market_id', '=', marketId)
+      .where('status', '=', 'open')
+      .limit(limit)
+      .execute();
+    return rows.map(toSettlementRow);
+  }
+
+  /** Already-settled bets on a market — the input to a resettlement recompute (D35). */
+  async settledBetsForMarket(marketId: string, limit: number): Promise<SettlementRow[]> {
+    const rows = await this.db
+      .selectFrom('bet')
+      .select(SETTLEMENT_COLS)
+      .where('market_id', '=', marketId)
+      .where('status', 'in', ['won', 'lost', 'void'])
+      .limit(limit)
+      .execute();
+    return rows.map(toSettlementRow);
+  }
+
+  async setStatus(betId: string, status: BetStatus): Promise<void> {
+    await this.db.updateTable('bet').set({ status }).where('id', '=', betId).execute();
   }
 }

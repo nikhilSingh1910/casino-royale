@@ -11,6 +11,6 @@ import { IdentityRepo } from './identity.repo';
   imports: [DatabaseModule, LedgerModule],
   controllers: [AuthController, AccountController],
   providers: [IdentityRepo, AuthService, AccountService],
-  exports: [AuthService, AccountService],
+  exports: [AuthService, AccountService, IdentityRepo],
 })
 export class IdentityModule {}

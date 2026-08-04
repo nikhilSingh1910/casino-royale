@@ -661,3 +661,42 @@ CLOSED`.
 auth** — adequate because there is no real money, PII-heavy data, or payment surface (D32). A future
 real-money pivot must add a proper security review and likely MFA/email-verification (all deferred
 now as over-build). Rolling auth is a known footgun; the mitigations above are deliberately standard.
+
+---
+
+### D35 — Fancy/session settlement semantics + compensating resettlement (CM4)
+
+**Context.** CM4 settles fancy/session markets (the only ones with bets — CM3) from the append-only
+`raw_ball_event` store, and must be able to *correct* a settlement (third-umpire change) without
+ever editing a ledger entry (§4: "corrections are new compensating entries; nothing is updated").
+None of this was previously specified, so the semantics are decided here rather than assumed.
+
+**Decision.**
+1. **Binary outcome.** For a bet struck at `line_value` L with actual session runs R: a **back**
+   wins iff `R ≥ L`; a **lay** wins iff `R < L`. The `≥` boundary favours the back (documented, not
+   incidental). A bet is settled against **its own struck line**, never the market's repriced line.
+2. **Actual runs = innings 1, overs `< window`.** Session markets model the first-innings block
+   (e.g. "6 over runs"). Multi-innings/second-innings session lines are deferred (needs an `innings`
+   column on `fancy_market` + a resolver arg) — not built, must not be claimed.
+3. **Window complete** when legal balls in the window `≥ overs×6`, **or** innings 1 has ended
+   (a ball with `innings ≥ 2` exists, or 10 wickets fell) → settle at runs so far. Never settle an
+   incomplete window (no fabricated result — §3.10); return a typed `pending`.
+4. **Settlement money is the one ledger.** One pure `settlementEntries(outcome,…)` mapping
+   (`won→payout`, `lost→capture`, `void→release`) is shared by `settle` and `resettle` — no second
+   formula (§3.2). Per-bet idempotency key `settle:<betId>` makes re-runs no-ops (replayable).
+5. **Resettlement = one compensating txn**: `[...reverseEntries(old), ...new]` in a single ledger
+   transaction. The reserved legs cancel, so the reservation stays `settled` and the reserved
+   balance is untouched — the §4 reservation invariant holds. Entry **order matters** (reverse
+   first, else `reserved` transiently underflows the non-negative guard).
+6. **Play-money clawback limit.** A correction that would claw back more chips than the player
+   currently holds (won→lost after they spent it) **fails closed** (`LedgerError`) — there is no
+   suspense/negative-balance path (D31 void under D32). Accepted limitation, not a bug.
+7. **Trigger + audit.** `settleDueMarkets(matchId)` is called after ingest (durable job-queue
+   trigger deferred — no queue built yet, D33). Manual overrides (void/resettle) record actor+reason
+   via `IdentityRepo.audit` (the shared `AuditService` is extracted at CM5); **dual-auth SoD
+   enforcement** (approver ≠ adjuster) is CM5, not CM4.
+
+**Consequence.** Settlement is a pure fold over stored balls plus the single ledger, so it is
+replayable and auditable — the audit posture an operator/regulator wants. The deferred items
+(multi-innings, clawback suspense, job-queue trigger, SoD) are listed in `docs/CRICKET-MVP.md` CM4
+and must not be presented as done.

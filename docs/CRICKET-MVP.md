@@ -348,7 +348,7 @@ ticks.
 > fancy/session product (the HAR's core). The **reserve + bet-insert atomicity saga** (today a crash
 > leaves a reservation a retry heals, rather than one transaction spanning both) stays a hardening item.
 
-### CM4 — In-play settlement, replayable · **XL**
+### ✅ CM4 — In-play settlement, replayable · **XL** — DONE 2026-08-04
 > **Proof:** a session market settles correctly at over-block completion **from stored ball events**;
 > a simulated third-umpire correction **resettles via compensating entries** under dual auth; a
 > replay from `raw_ball_events` reproduces identical ledger effects.
@@ -356,6 +356,30 @@ ticks.
 `XC4.1` micro-settlement triggers (over-block, wicket, innings, match) · `XC4.2` resolver per market
 group · `XC4.3` void rules (abandonment, no-result) · `XC4.4` compensating-entry resettlement ·
 `XC4.5` dual-auth manual override → append-only Postgres audit (D33).
+
+> **DONE — verified** (76 tests green, real Postgres). Settlement is a **pure fold over the
+> append-only `raw_ball_event` store** + the one ledger (D35). `resolveFancyBet` (back wins iff
+> `runs ≥ struck line`, lay is the mirror) settles a fancy/session market at **over-block completion**
+> (`sessionComplete`: window's legal balls bowled, or innings 1 ended early); a back that reaches its
+> line is **paid** (stake + winnings), one short **loses to the house**, a lay wins when runs fall
+> short — all balances asserted exact, `verifyIntegrity()` balanced after each. **Void** (`XC4.3`)
+> returns every stake and writes an audit record. **Resettlement** (`XC4.4`): a third-umpire penalty
+> (append-only) flips a bet lost→won, corrected by **one compensating ledger transaction**
+> (`[...reverse(old), ...new]`) — reserved legs cancel, the reservation stays settled, the ledger
+> still balances; **idempotent by `correctionId`**. Settle/void/resettle are each **idempotent by
+> key** (re-run moves money once); a settled market **takes no new bets**; an incomplete window
+> returns `pending` (**never a fabricated result**, §3.10). Manual overrides record actor+reason via
+> `IdentityRepo.audit` (`XC4.5`).
+>
+> **Deferred — not built, do not claim as done:** **match-odds/bookmaker** settlement (their
+> placement isn't built — CM3 was fancy-only; `XC4.2` covers the fancy resolver only); **multi-innings**
+> session markets (innings-1 only — needs an `innings` column, D35 §2); **per-wicket / match-level**
+> micro-triggers (`XC4.1` — only over-block + innings-end are modelled, matching the markets that
+> exist); **dual-auth SoD enforcement** (approver ≠ adjuster) → **CM5**; the **durable job-queue
+> trigger** (`settleDueMarkets` is callable but not yet drained by a worker — no queue built, D33);
+> **won→lost clawback beyond balance** fails closed (no suspense, D31 void); and a **narrow late-bet
+> race** (a placement committing between the window-complete check and the final drain can orphan an
+> open bet) — flagged, mitigated by the drain-until-empty loop.
 
 ### CM5 — Trading console + integrity · **L**
 > **Proof:** an operator suspends a market, voids a bet and resettles through the console — every

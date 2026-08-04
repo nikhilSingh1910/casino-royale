@@ -8,10 +8,11 @@ import { FeedIngestService } from './feed-ingest.service';
 import { MarketRepo } from './market.repo';
 import { MarketService } from './market.service';
 import { PlacementService } from './placement.service';
+import { SettlementService } from './settlement.service';
 
 @Module({
   imports: [DatabaseModule, LedgerModule, IdentityModule],
-  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService],
-  exports: [FeedIngestService, CricketRepo, MarketService, PlacementService],
+  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService],
+  exports: [FeedIngestService, CricketRepo, MarketService, PlacementService, SettlementService],
 })
 export class CricketModule {}

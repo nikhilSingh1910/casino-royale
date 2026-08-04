@@ -35,7 +35,7 @@ describe('LedgerService (integration, real Postgres) — M1', () => {
     expect(bal.available as bigint).toBe(900n);
     expect(bal.reserved as bigint).toBe(100n);
 
-    await ledger.settle(rid, 'win', chips(150), randomUUID()); // stake back + 150 winnings
+    await ledger.settle(rid, 'won', chips(150), randomUUID()); // stake back + 150 winnings
     bal = await ledger.balance(u);
     expect(bal.available as bigint).toBe(1150n); // 900 + 100 + 150
     expect(bal.reserved as bigint).toBe(0n);
@@ -50,7 +50,7 @@ describe('LedgerService (integration, real Postgres) — M1', () => {
     await ledger.topUp(u, chips(500), randomUUID());
     const rid = randomUUID();
     await ledger.reserve(u, rid, chips(200), randomUUID());
-    await ledger.settle(rid, 'lose', chips(0), randomUUID());
+    await ledger.settle(rid, 'lost', chips(0), randomUUID());
     const bal = await ledger.balance(u);
     expect(bal.available as bigint).toBe(300n);
     expect(bal.reserved as bigint).toBe(0n);
@@ -81,7 +81,7 @@ describe('LedgerService (integration, real Postgres) — M1', () => {
     const rid = randomUUID();
     await ledger.reserve(u, rid, chips(50), randomUUID());
     await ledger.settle(rid, 'void', chips(0), randomUUID());
-    await expect(ledger.settle(rid, 'win', chips(10), randomUUID())).rejects.toThrow(ReservationNotOpenError);
+    await expect(ledger.settle(rid, 'won', chips(10), randomUUID())).rejects.toThrow(ReservationNotOpenError);
   });
 
   it('serialises concurrent reserves — only what the balance allows succeeds', async () => {

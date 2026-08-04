@@ -99,6 +99,21 @@ export const release = (userId: string, stake: Chips): Entry[] => {
   ];
 };
 
+export type SettleOutcome = 'won' | 'lost' | 'void';
+
+/** The one mapping outcome→entries — shared by settle and resettle so there is a single formula (§3.2, D35). */
+export const settlementEntries = (
+  outcome: SettleOutcome,
+  userId: string,
+  stake: Chips,
+  win: Chips,
+): Entry[] =>
+  outcome === 'won' ? payout(userId, stake, win) : outcome === 'lost' ? capture(userId, stake) : release(userId, stake);
+
+/** Negate an entry set — the compensating half of a resettlement (D35). Sum stays zero. */
+export const reverseEntries = (entries: readonly Entry[]): Entry[] =>
+  entries.map((e) => ({ account: e.account, amount: neg(e.amount) }));
+
 /** The whole ledger must always sum to zero (money is neither created nor destroyed). */
 export function sumAll(b: Balances): bigint {
   let s = 0n;

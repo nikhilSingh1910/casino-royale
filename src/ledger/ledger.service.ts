@@ -4,9 +4,9 @@ import { Kysely, Transaction, sql } from 'kysely';
 import { Database, KYSELY } from '../db';
 import { chips, Chips } from '../shared/money';
 import * as L from './core';
-import { ReservationNotFoundError, ReservationNotOpenError } from './errors';
+import { ReservationNotFoundError, ReservationNotOpenError, ReservationNotSettledError } from './errors';
 
-export type SettleOutcome = 'win' | 'lose' | 'void';
+export type SettleOutcome = L.SettleOutcome; // 'won' | 'lost' | 'void' — matches BetStatus (D35)
 export interface OpResult {
   txnId: string;
   replayed: boolean;
@@ -78,13 +78,7 @@ export class LedgerService {
       if (resv.status !== 'open') throw new ReservationNotOpenError(reservationId);
 
       const stake = chips(resv.amount);
-      const userId = resv.user_id;
-      const entries =
-        outcome === 'win'
-          ? L.payout(userId, stake, winnings)
-          : outcome === 'lose'
-            ? L.capture(userId, stake)
-            : L.release(userId, stake);
+      const entries = L.settlementEntries(outcome, resv.user_id, stake, winnings);
 
       await this.validate(trx, entries);
       const txnId = await this.write(trx, idempotencyKey, `settle:${outcome}`, entries);
@@ -93,6 +87,51 @@ export class LedgerService {
         .set({ status: outcome === 'void' ? 'released' : 'settled', closed_at: new Date() })
         .where('reservation_id', '=', reservationId)
         .execute();
+      return { txnId, replayed: false };
+    });
+  }
+
+  /**
+   * Correct an already-settled bet (D35): one compensating transaction — reverse the old outcome,
+   * apply the new. reverse(old) goes FIRST so the reserved account never underflows mid-fold; the
+   * reserved legs cancel, so the reservation stays settled and the reserved balance is untouched.
+   * A clawback beyond the player's balance (won→lost after spend) fails closed in validate().
+   */
+  async resettle(
+    reservationId: string,
+    oldOutcome: SettleOutcome,
+    newOutcome: SettleOutcome,
+    winnings: Chips,
+    idempotencyKey: string,
+  ): Promise<OpResult> {
+    return this.db.transaction().execute(async (trx) => {
+      const resv = await trx
+        .selectFrom('chip_reservation')
+        .selectAll()
+        .where('reservation_id', '=', reservationId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!resv) throw new ReservationNotFoundError(reservationId);
+
+      await this.lock(trx, resv.user_id);
+      const replay = await this.findTxn(trx, idempotencyKey);
+      if (replay) return { txnId: replay, replayed: true };
+      if (resv.status === 'open') throw new ReservationNotSettledError(reservationId);
+
+      const stake = chips(resv.amount);
+      const entries = [
+        ...L.reverseEntries(L.settlementEntries(oldOutcome, resv.user_id, stake, winnings)),
+        ...L.settlementEntries(newOutcome, resv.user_id, stake, winnings),
+      ];
+      await this.validate(trx, entries);
+      const txnId = await this.write(trx, idempotencyKey, `resettle:${oldOutcome}->${newOutcome}`, entries);
+      if (newOutcome === 'void') {
+        await trx
+          .updateTable('chip_reservation')
+          .set({ status: 'released' })
+          .where('reservation_id', '=', reservationId)
+          .execute();
+      }
       return { txnId, replayed: false };
     });
   }
