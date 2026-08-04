@@ -21,7 +21,9 @@ just don't convert to money.
 
 ## Phase
 
-**Foundations DONE (M0·M1·M2). Cricket: CM1·CM2·CM3·CM4·CM5 DONE; CM6 (end-to-end playable product) next.**
+**Cricket play-money MVP COMPLETE — M0·M1·M2 + CM1–CM6 all DONE (100 tests green, real Postgres).**
+The full playable path works end to end: all three market groups placed, settled from their
+authoritative inputs, correct ledger balance. Next is the deferred/hardening backlog (below).
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log
@@ -86,11 +88,26 @@ milestones, each proof-gated. Run the loop (`CLAUDE.md` §2) per milestone.
    suspend/reopen single-auth; exposure by market/user/match reusing §5 rules 2/11; a pure
    concentration integrity flag. *Deferred:* stake-factoring (XC5.3), HTTP e2e, the claim↔execute
    saga gap, SoD-by-identity (`docs/CRICKET-MVP.md` CM5, D36).
-5. **CM6 (end-to-end playable product) is next** — the integration proof over CM1–CM5: a player with
-   chips → a cricket match → bets on match-odds, bookmaker **and** a session market → ball-by-ball
-   settlement → correct ledger balance, **including a void and a resettlement**. The full play-money
-   path, end to end (`docs/CRICKET-MVP.md` CM6). NB: match-odds/bookmaker **placement** is not yet
-   built (CM3 was fancy-only) — CM6 will surface that gap and decide scope.
+5. ✅ **CM6 — end-to-end playable product** — DONE (100 tests green, real Postgres). Built the **runner
+   path** CM3/CM4 deferred (D37): `placeRunnerBet` (two-phase on the runner price, shares the one
+   money-path with fancy) and `settleMatchResult` (settles match-odds/bookmaker from an authoritative
+   declared result, invalid result fails loud, generalised `voidMarket`). The end-to-end proof places
+   across all three groups, settles session-from-balls + runners-from-result, includes a void and a
+   session resettle, and checks ledger integrity after every step (`docs/CRICKET-MVP.md` CM6).
+
+## Next — deferred/hardening backlog (the MVP is playable; these are the known gaps)
+
+Nothing blocks a playable demo. Remaining, roughly by value (all recorded in `docs/CRICKET-MVP.md`
+and the decision log):
+- **Frontend / design-parity track** — no UI yet; the product is API + services (review finding C22).
+- **Per-runner operator liability / exposure** — the §5-rule-11 formula is binary; multi-runner needs a
+  per-runner worst case (D37). Runner auto-suspend is off until then.
+- **Per-user stake factoring** (`XC3.7`/`XC5.3`) and **timed bet-delay** (`XC3.4`).
+- **Durable settlement job-queue trigger** — `settleDueMarkets` is callable but not yet drained by a
+  worker (no queue built, D33).
+- **Saga gaps** — reserve+bet atomicity (CM3), operator-action claim↔execute (CM5).
+- **Multi-innings session markets**, **runner-market resettlement**, **HTTP e2e** for the console.
+- **GDPR / SOC2 / compliance** — a later cycle, as agreed (out of scope now, D32).
 
 ## Notes
 

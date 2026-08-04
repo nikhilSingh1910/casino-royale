@@ -66,6 +66,7 @@ export interface CricketMatchTable {
   name: string;
   starts_at: Date;
   status: ColumnType<'scheduled' | 'inplay' | 'suspended' | 'closed', 'scheduled' | 'inplay' | 'suspended' | 'closed' | undefined, 'scheduled' | 'inplay' | 'suspended' | 'closed'>;
+  result: ColumnType<string | null, never, string>; // the winning runner name once declared (D37)
   updated_at: ColumnType<Date, Date | undefined, Date>;
 }
 
@@ -137,7 +138,8 @@ export interface BetTable {
   match_id: string;
   reservation_id: string;
   side: BetSide;
-  line_value: number;
+  line_value: ColumnType<number | null, number | null, never>; // fancy bets carry a struck line
+  runner_id: ColumnType<string | null, string | null, never>; // runner bets carry a selection (D37)
   price: ColumnType<bigint, bigint, bigint>;
   stake: ColumnType<bigint, bigint, bigint>;
   reserved: ColumnType<bigint, bigint, bigint>;

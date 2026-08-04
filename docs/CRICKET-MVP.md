@@ -345,8 +345,9 @@ ticks.
 > is stored in config but not yet enforced as a delay window); **per-user stake factoring** (`XC3.7`
 > — only a global `max_stake` gate exists); **fancy section-level** locks (`XC3.5` — only whole-market
 > suspend). Runner-based **match-odds/bookmaker placement** is a follow-up — CM3 targets the
-> fancy/session product (the HAR's core). The **reserve + bet-insert atomicity saga** (today a crash
-> leaves a reservation a retry heals, rather than one transaction spanning both) stays a hardening item.
+> fancy/session product (the HAR's core; runner placement was **built in CM6**, D37). The **reserve +
+> bet-insert atomicity saga** (today a crash leaves a reservation a retry heals, rather than one
+> transaction spanning both) stays a hardening item.
 
 ### ✅ CM4 — In-play settlement, replayable · **XL** — DONE 2026-08-04
 > **Proof:** a session market settles correctly at over-block completion **from stored ball events**;
@@ -371,8 +372,8 @@ group · `XC4.3` void rules (abandonment, no-result) · `XC4.4` compensating-ent
 > returns `pending` (**never a fabricated result**, §3.10). Manual overrides record actor+reason via
 > `IdentityRepo.audit` (`XC4.5`).
 >
-> **Deferred — not built, do not claim as done:** **match-odds/bookmaker** settlement (their
-> placement isn't built — CM3 was fancy-only; `XC4.2` covers the fancy resolver only); **multi-innings**
+> **Deferred — not built, do not claim as done:** **match-odds/bookmaker** settlement (**built in CM6**,
+> D37 — `XC4.2` here covers the fancy resolver only); **multi-innings**
 > session markets (innings-1 only — needs an `innings` column, D35 §2); **per-wicket / match-level**
 > micro-triggers (`XC4.1` — only over-block + innings-end are modelled, matching the markets that
 > exist); **dual-auth SoD enforcement** (approver ≠ adjuster) → **CM5**; the **durable job-queue
@@ -413,12 +414,37 @@ wrapper.
 > after the claim — only reachable via a resettle clawback-underflow — leaves it marked executed);
 > and **SoD is by operator identity**, not human (two operator accounts for one person defeats it).
 
-### CM6 — Cricket end-to-end · **L** — *the playable-product proof*
+### ✅ CM6 — Cricket end-to-end · **L** — *the playable-product proof* — DONE 2026-08-05
 > **Proof:** a player with chips → cricket match → bets on match-odds, bookmaker **and** a session
 > market → ball-by-ball settlement → chip-ledger movement → correct balance. Includes a void and a
 > resettlement. The full play-money path, end to end — a playable product.
 
 Integration milestone over CM1–CM5. (No M5/M6/M7 under D32.)
+
+> **DONE — verified** (100 tests green, real Postgres). CM6 also **built the runner path** that CM3/CM4
+> deferred (D37), so all three market groups are now placeable and settleable:
+> - **Runner placement** — `placeRunnerBet` selects a runner and is two-phase against **that runner's**
+>   live price; a moved price or a runner from another market is rejected. It shares the **one money-path**
+>   (`reserveAndCreate`) with fancy placement — reserve, ledger, bet row, cap — differing only in the
+>   two-phase check (§3.2).
+> - **Runner settlement** — `settleMatchResult(match, winner)` settles every match-odds/bookmaker market
+>   from an **authoritative declared result** (stored on the match, replayable): the runner whose name
+>   matches wins, `resolveRunnerBet` pays backers of the winner and captures the rest. An **invalid
+>   winner fails loud** (`MatchResultError`) with nothing settled and no result stored — validated
+>   across all markets first, no partial.
+> - **Generalised void** — `voidFancyMarket` → `voidMarket`, returns stakes on **any** market type.
+> - **The end-to-end**: one player backs match-odds, bookmaker and a session line; the session settles
+>   from balls (lost), both runner markets settle from the result (won), a third-umpire penalty flips
+>   the session and **resettles** it (won) — final balance is exactly the three winnings, and
+>   `verifyIntegrity()` holds after every step.
+>
+> **Deferred — not built, do not claim as done:** **per-runner operator liability / exposure** (D37 §5 —
+> the binary §5-rule-11 formula is wrong for a multi-runner market, so runner auto-suspend is off
+> (`session_threshold = 0`) and the CM5 exposure views are fancy-correct only); **runner-market
+> resettlement** (the resettlement proof runs on the session market — CM4); deriving the winner from
+> balls (needs toss/batting-order modelling); plus the still-open cross-milestone items — stake-factoring
+> (`XC3.7`/`XC5.3`), timed bet-delay (`XC3.4`), multi-innings sessions, HTTP e2e, the durable
+> settlement job-queue trigger, and a frontend/design-parity track.
 
 ---
 

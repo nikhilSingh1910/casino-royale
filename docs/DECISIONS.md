@@ -736,3 +736,42 @@ console (service + role-gated controller are built and integration-tested; no ru
 **Consequence.** The console reuses CM4's settlement mechanics behind authz + four-eyes + a single
 immutable audit trail — the review artefact an auditor asks for first. SoD lives in one method; roles
 in one guard; audit in one service.
+
+---
+
+### D37 — Runner markets: bet on a runner, settle from an authoritative result (CM6)
+
+**Context.** CM6 completes the three-market-group product. Match-odds and bookmaker are **runner**
+markets: a market holds several runners (teams), each with its own back/lay price; a bet selects a
+runner. Settlement needs the **winning runner**. Our ball model has no innings→team mapping (no toss,
+no batting order), so the winner cannot be derived from `raw_ball_event` the way session runs are.
+
+**Decision.**
+1. **One bet table, two selection shapes.** `bet` gains a nullable `runner_id`; `line_value` becomes
+   nullable. A fancy bet carries `line_value` (its struck line); a runner bet carries `runner_id`
+   (its selection). No second bet table (§3.2).
+2. **One placement money-path.** `placeBet` (fancy) and `placeRunnerBet` (runner) share a single
+   private tail — assertCanBet → reserve (back: stake, lay: `winnings`) → ledger reserve → bet row →
+   liability cap. They differ only in the two-phase validation (line+price vs runner-price) (§3.2).
+3. **The winner is an authoritative declared result, stored and replayable.** `settleMatchResult`
+   takes the winning runner name (operator- or feed-declared), stores it on `cricket_match.result`,
+   and settles every match-odds/bookmaker market on the match: in each market the runner whose name
+   matches is the winner. `resolveRunnerBet(side, betRunner, winningRunner)` — back wins iff it
+   backed the winner; lay is the mirror. Recomputable from the stored result — replayable, like
+   fancy from balls (the invariant is "stored authoritative inputs", not "everything from balls").
+4. **One settlement drain.** `drainOpenBets` takes an `(bet)→outcome` resolver, so fancy, runner and
+   void all reuse it. `voidFancyMarket` becomes `voidMarket` — void returns stakes regardless of
+   market type. Settle/void stay idempotent by `settle:<betId>`.
+5. **Runner auto-suspend is off, runner exposure is deferred.** `calculateOperatorLiability` (§5
+   rule 11) is a **binary** yes/no worst-case — correct for fancy, but a multi-runner market's worst
+   case is the max over *which runner wins*, which the binary form does not capture. So runner
+   markets carry `session_threshold = 0` (the placement cap is guarded by `threshold > 0` → disabled),
+   and a proper per-runner liability is a **named deferral**, not shipped as a wrong number.
+
+**Deferred (not built, not claimed):** per-runner operator liability / exposure views for runner
+markets; runner-market **resettlement** (the CM6 resettlement proof runs on the session market, which
+CM4 already covers); deriving the winner from balls (needs toss/batting-order modelling).
+
+**Consequence.** Match-odds and bookmaker are one runner path (placement + settlement) that reuses
+the ledger, the drain, and the audit trail. The playable end-to-end product (CM6) can place across all
+three groups and settle each from its authoritative input — balls for sessions, the result for runners.

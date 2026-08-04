@@ -20,6 +20,30 @@ export interface PlaceBetInput {
   idempotencyKey: string;
 }
 
+/** A bet on a runner market (match-odds/bookmaker) — selects a runner, two-phase on that runner's price (D37). */
+export interface PlaceRunnerBetInput {
+  userId: string;
+  marketId: string;
+  runnerId: string;
+  side: BetSide;
+  stake: Chips;
+  seenPrice: bigint;
+  idempotencyKey: string;
+}
+
+interface ReserveArgs {
+  userId: string;
+  marketId: string;
+  matchId: string;
+  side: BetSide;
+  stake: Chips;
+  idempotencyKey: string;
+  priceScaled: bigint;
+  lineValue: number | null;
+  runnerId: string | null;
+  cfg: { max_stake: bigint; session_threshold: bigint };
+}
+
 const POSITIONS_MAX = 10000;
 
 /**
@@ -36,15 +60,15 @@ export class PlacementService {
     private readonly bets: BetRepo,
   ) {}
 
+  /** Place a fancy/session bet — two-phase against the live line + price (XC3.1). */
   async placeBet(input: PlaceBetInput) {
-    // Idempotent: the same placement key returns the same bet, no second reservation.
     const existing = await this.bets.findByKey(input.idempotencyKey);
     if (existing) return existing;
 
     const market = await this.markets.getMarketWithFancy(input.marketId);
     if (!market) throw new BetRejectedError('market not found');
     if (market.status !== 'open') throw new BetRejectedError('market not open'); // lock/suspend (XC3.5)
-    if (!market.fancy) throw new BetRejectedError('only fancy markets are supported in CM3');
+    if (!market.fancy) throw new BetRejectedError('only fancy markets take a line bet');
 
     const cfg = await this.markets.getConfig(market.market_type);
     if (!cfg?.enabled) throw new BetRejectedError('market type disabled');
@@ -54,42 +78,95 @@ export class PlacementService {
     const currentPrice = input.side === 'back' ? market.fancy.back_price : market.fancy.lay_price;
     if (input.seenPrice !== currentPrice) throw new BetRejectedError('price moved');
 
-    await this.account.assertCanBet(input.userId); // M2 gate
-    if ((input.stake as bigint) > cfg.max_stake) throw new BetRejectedError('stake exceeds limit');
-
-    const p = price(input.seenPrice);
-    const reserved = input.side === 'back' ? input.stake : winnings(input.stake, p);
-    const potentialPayout = input.side === 'back' ? winnings(input.stake, p) : input.stake;
-
-    const bal = await this.ledger.balance(input.userId);
-    if ((bal.available as bigint) < (reserved as bigint)) throw new BetRejectedError('insufficient chips');
-
-    // Reserve via the ledger (M1). Same key → whole placement is idempotent (XC3.2, XC3.7).
-    // reservationId is DERIVED from the placement key (not random): on a crash-retry between
-    // reserve and bets.create, the ledger replays idempotently and skips re-inserting the
-    // chip_reservation, so a fresh random id would leave bet.reservation_id pointing at a row
-    // that doesn't exist. Deterministic id keeps bet ↔ chip_reservation consistent for CM4.
-    const reservationId = `bet:${input.idempotencyKey}`;
-    await this.ledger.reserve(input.userId, reservationId, reserved, input.idempotencyKey);
-
-    const bet = await this.bets.create({
-      idempotencyKey: input.idempotencyKey,
+    return this.reserveAndCreate({
       userId: input.userId,
       marketId: input.marketId,
       matchId: market.match_id,
-      reservationId,
       side: input.side,
-      lineValue: input.seenLineValue,
-      price: input.seenPrice,
       stake: input.stake,
+      idempotencyKey: input.idempotencyKey,
+      priceScaled: input.seenPrice,
+      lineValue: input.seenLineValue,
+      runnerId: null,
+      cfg,
+    });
+  }
+
+  /** Place a match-odds/bookmaker bet — two-phase against the live runner price (D37). */
+  async placeRunnerBet(input: PlaceRunnerBetInput) {
+    const existing = await this.bets.findByKey(input.idempotencyKey);
+    if (existing) return existing;
+
+    const market = await this.markets.getMarketWithFancy(input.marketId);
+    if (!market) throw new BetRejectedError('market not found');
+    if (market.status !== 'open') throw new BetRejectedError('market not open');
+    if (market.market_type !== 'match_odds' && market.market_type !== 'bookmaker') {
+      throw new BetRejectedError('not a runner market');
+    }
+
+    const cfg = await this.markets.getConfig(market.market_type);
+    if (!cfg?.enabled) throw new BetRejectedError('market type disabled');
+
+    const runner = await this.markets.getRunner(input.runnerId);
+    if (!runner || runner.market_id !== input.marketId) throw new BetRejectedError('runner not in market');
+    const currentPrice = input.side === 'back' ? runner.back_price : runner.lay_price;
+    if (input.seenPrice !== currentPrice) throw new BetRejectedError('price moved');
+
+    return this.reserveAndCreate({
+      userId: input.userId,
+      marketId: input.marketId,
+      matchId: market.match_id,
+      side: input.side,
+      stake: input.stake,
+      idempotencyKey: input.idempotencyKey,
+      priceScaled: input.seenPrice,
+      lineValue: null,
+      runnerId: input.runnerId,
+      cfg,
+    });
+  }
+
+  /**
+   * The one money-path shared by both placement kinds (§3.2): M2 gate → full reservation via the
+   * ledger (back: stake, lay: winnings) → bet row → liability-cap auto-suspend. The deterministic
+   * reservationId keeps bet ↔ chip_reservation consistent across a crash-retry (D35).
+   */
+  private async reserveAndCreate(a: ReserveArgs) {
+    await this.account.assertCanBet(a.userId); // M2 gate
+    if ((a.stake as bigint) > a.cfg.max_stake) throw new BetRejectedError('stake exceeds limit');
+
+    const p = price(a.priceScaled);
+    const reserved = a.side === 'back' ? a.stake : winnings(a.stake, p);
+    const potentialPayout = a.side === 'back' ? winnings(a.stake, p) : a.stake;
+
+    const bal = await this.ledger.balance(a.userId);
+    if ((bal.available as bigint) < (reserved as bigint)) throw new BetRejectedError('insufficient chips');
+
+    const reservationId = `bet:${a.idempotencyKey}`;
+    await this.ledger.reserve(a.userId, reservationId, reserved, a.idempotencyKey);
+
+    const bet = await this.bets.create({
+      idempotencyKey: a.idempotencyKey,
+      userId: a.userId,
+      marketId: a.marketId,
+      matchId: a.matchId,
+      reservationId,
+      side: a.side,
+      lineValue: a.lineValue,
+      runnerId: a.runnerId,
+      price: a.priceScaled,
+      stake: a.stake,
       reserved,
       potentialPayout,
     });
 
-    // Liability cap → auto-suspend (XC3.6). session_threshold is the fancy market's cap.
-    const liability = calculateOperatorLiability(await this.bets.positionsForMarket(input.marketId, POSITIONS_MAX));
-    if ((liability as bigint) > cfg.session_threshold) {
-      await this.markets.setStatusForMarket(input.marketId, 'suspended');
+    // Liability cap → auto-suspend (XC3.6). Only when a cap is set; runner markets carry 0 = off (D37),
+    // because the binary operator-liability formula does not model a multi-runner worst case.
+    if ((a.cfg.session_threshold as bigint) > 0n) {
+      const liability = calculateOperatorLiability(await this.bets.positionsForMarket(a.marketId, POSITIONS_MAX));
+      if ((liability as bigint) > a.cfg.session_threshold) {
+        await this.markets.setStatusForMarket(a.marketId, 'suspended');
+      }
     }
     return bet;
   }

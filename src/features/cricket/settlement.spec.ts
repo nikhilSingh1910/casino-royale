@@ -1,5 +1,5 @@
 import { BallEvent } from '../../integrations/feed';
-import { resolveFancyBet, sessionComplete, sessionRuns } from './settlement';
+import { resolveFancyBet, resolveRunnerBet, sessionComplete, sessionRuns } from './settlement';
 
 let seq = 0;
 const ball = (over: number, runs: number, o: Partial<BallEvent> = {}): BallEvent => ({
@@ -32,6 +32,17 @@ describe('fancy settlement resolver (pure, D35)', () => {
       expect(resolveFancyBet('lay', 40, 30)).toBe('won');
       expect(resolveFancyBet('lay', 40, 45)).toBe('lost');
       expect(resolveFancyBet('lay', 40, 40)).toBe('lost');
+    });
+  });
+
+  describe('resolveRunnerBet — back the winning runner (D37)', () => {
+    it('back wins on the winner, loses on any other runner', () => {
+      expect(resolveRunnerBet('back', 'A', 'A')).toBe('won');
+      expect(resolveRunnerBet('back', 'B', 'A')).toBe('lost');
+    });
+    it('lay is the mirror', () => {
+      expect(resolveRunnerBet('lay', 'A', 'A')).toBe('lost');
+      expect(resolveRunnerBet('lay', 'B', 'A')).toBe('won');
     });
   });
 

@@ -81,7 +81,7 @@ export class TradingService {
     const params = action.params as ProposalParams;
     const result: MarketSettlement | Correction[] =
       action.kind === 'void'
-        ? await this.settlement.voidFancyMarket(action.market_id, approver, params.reason)
+        ? await this.settlement.voidMarket(action.market_id, approver, params.reason)
         : await this.settlement.resettleFancyMarket(action.market_id, approver, params.reason, params.correctionId ?? actionId);
 
     await this.audit.record({

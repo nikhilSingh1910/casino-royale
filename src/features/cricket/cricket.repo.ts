@@ -26,9 +26,14 @@ export class CricketRepo {
   async getMatch(matchId: string) {
     return this.db
       .selectFrom('cricket_match')
-      .select(['match_id', 'competition', 'name', 'status'])
+      .select(['match_id', 'competition', 'name', 'status', 'result'])
       .where('match_id', '=', matchId)
       .executeTakeFirst();
+  }
+
+  /** Record the authoritative result (winning runner name) — the raw input runner settlement replays (D37). */
+  async setResult(matchId: string, result: string): Promise<void> {
+    await this.db.updateTable('cricket_match').set({ result }).where('match_id', '=', matchId).execute();
   }
 
   /** Append a ball idempotently. True if newly inserted, false if a duplicate (match_id, sequence). */

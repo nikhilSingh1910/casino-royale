@@ -177,7 +177,7 @@ describe('in-play settlement (integration, real Postgres) — CM4', () => {
     const { marketId } = await fancyMarket('s6');
     await placeBack(u, marketId, 100);
 
-    const res = await settlement.voidFancyMarket(marketId, 'trader:alice', 'match abandoned — rain');
+    const res = await settlement.voidMarket(marketId, 'trader:alice', 'match abandoned — rain');
     expect(res.settled).toBe(1);
     expect(await balances(u)).toEqual({ available: 1000n, reserved: 0n }); // stake returned
     await expectBalanced();

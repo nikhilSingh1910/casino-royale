@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { BallEvent } from '../../integrations/feed';
-import { BetSide, BetStatus } from '../../db';
+import { BetStatus } from '../../db';
 import { chips, Chips, ZERO } from '../../shared/money';
 import { LedgerService, SettleOutcome } from '../../ledger';
 import { AuditService } from '../audit';
-import { BetRepo } from './bet.repo';
+import { BetRepo, SettlementRow } from './bet.repo';
 import { CricketRepo } from './cricket.repo';
 import { MarketRepo } from './market.repo';
-import { resolveFancyBet, sessionComplete, sessionRuns } from './settlement';
+import { resolveFancyBet, resolveRunnerBet, sessionComplete, sessionRuns } from './settlement';
+
+export class MatchResultError extends Error {}
 
 const BALLS_MAX = 5000; // a T20 innings is ~130 legal balls; ample headroom
 const SETTLE_BATCH = 1000;
@@ -68,15 +70,56 @@ export class SettlementService {
     const runs = sessionRuns(balls, overs);
     // Lock betting before settling so no bet can be placed against a window that's already resolved.
     await this.markets.setStatusForMarket(marketId, 'suspended');
-    const settled = await this.drainOpenBets(marketId, (side, line) => resolveFancyBet(side, line, runs));
+    const settled = await this.drainOpenBets(marketId, (bet) => {
+      if (bet.lineValue === null) throw new Error('fancy market bet without a line');
+      return resolveFancyBet(bet.side, bet.lineValue, runs);
+    });
     await this.markets.setStatusForMarket(marketId, 'settled');
     return { marketId, status: 'settled', actualRuns: runs, settled };
   }
 
-  /** Void a fancy market (abandonment / no-result, XC4.3): every open bet's stake is returned. */
-  async voidFancyMarket(marketId: string, actor: string, reason: string): Promise<MarketSettlement> {
+  /**
+   * Settle a match's runner markets (match-odds/bookmaker) from an authoritative declared result (D37):
+   * the winning runner name. Stored on the match so settlement is replayable, then each market settles
+   * by its matching runner. Validates the winner exists in every unsettled market first — no partial.
+   */
+  async settleMatchResult(matchId: string, winnerName: string, actor: string): Promise<MarketSettlement[]> {
+    const runnerMarkets = (await this.markets.marketsForMatch(matchId, RESETTLE_MAX)).filter(
+      (m) => m.market_type === 'match_odds' || m.market_type === 'bookmaker',
+    );
+    const winnerIdByMarket = new Map<string, string>();
+    for (const m of runnerMarkets) {
+      if (m.status === 'settled') continue;
+      const runners = await this.markets.runnersForMarket(m.id, RESETTLE_MAX);
+      const w = runners.find((r) => r.runner_name === winnerName);
+      if (!w) throw new MatchResultError(`'${winnerName}' is not a runner in market ${m.id}`);
+      winnerIdByMarket.set(m.id, w.id);
+    }
+
+    await this.cricket.setResult(matchId, winnerName);
+    const out: MarketSettlement[] = [];
+    for (const m of runnerMarkets) {
+      const winnerId = winnerIdByMarket.get(m.id);
+      if (winnerId === undefined) {
+        out.push({ marketId: m.id, status: 'already', actualRuns: null, settled: 0 });
+        continue;
+      }
+      await this.markets.setStatusForMarket(m.id, 'suspended');
+      const settled = await this.drainOpenBets(m.id, (bet) => {
+        if (bet.runnerId === null) throw new Error('runner market bet without a runner');
+        return resolveRunnerBet(bet.side, bet.runnerId, winnerId);
+      });
+      await this.markets.setStatusForMarket(m.id, 'settled');
+      out.push({ marketId: m.id, status: 'settled', actualRuns: null, settled });
+    }
+    await this.audit.record({ actor, action: 'match.result', subject: matchId, after: { winner: winnerName, markets: out.length } });
+    return out;
+  }
+
+  /** Void a market (abandonment / no-result, XC4.3): every open bet's stake is returned. Any market type (D37). */
+  async voidMarket(marketId: string, actor: string, reason: string): Promise<MarketSettlement> {
     const market = await this.markets.getMarketWithFancy(marketId);
-    if (!market || !market.fancy) return { marketId, status: 'not-fancy', actualRuns: null, settled: 0 };
+    if (!market) return { marketId, status: 'not-fancy', actualRuns: null, settled: 0 };
     if (market.status === 'settled') return { marketId, status: 'already', actualRuns: null, settled: 0 };
 
     await this.markets.setStatusForMarket(marketId, 'suspended');
@@ -112,6 +155,7 @@ export class SettlementService {
     const corrected: Correction[] = [];
     for (const bet of bets) {
       if (bet.status === 'void') continue; // a void is a deliberate action, not runs-derived
+      if (bet.lineValue === null) continue; // runner bets aren't resolved from session runs
       const from = bet.status as SettleOutcome; // query excludes 'open'; void skipped above → 'won' | 'lost'
       const to = resolveFancyBet(bet.side, bet.lineValue, runs);
       if (to === from) continue;
@@ -133,14 +177,14 @@ export class SettlementService {
   /** Settle all open bets on a market, one idempotent ledger settlement each. Drains in batches — no cap. */
   private async drainOpenBets(
     marketId: string,
-    outcomeOf: (side: BetSide, line: number) => SettleOutcome,
+    outcomeOf: (bet: SettlementRow) => SettleOutcome,
   ): Promise<number> {
     let total = 0;
     for (;;) {
       const batch = await this.bets.openBetsForMarket(marketId, SETTLE_BATCH);
       if (batch.length === 0) return total;
       for (const bet of batch) {
-        const outcome = outcomeOf(bet.side, bet.lineValue);
+        const outcome = outcomeOf(bet);
         const win: Chips = outcome === 'won' ? chips(bet.potentialPayout) : ZERO;
         await this.ledger.settle(bet.reservationId, outcome, win, `settle:${bet.id}`);
         await this.bets.setStatus(bet.id, outcome);

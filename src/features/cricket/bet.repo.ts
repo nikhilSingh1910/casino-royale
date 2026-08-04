@@ -4,23 +4,25 @@ import { BetSide, BetStatus, Database, KYSELY } from '../../db';
 import { chips } from '../../shared/money';
 import { BetPosition } from './exposure';
 
-/** What settlement needs about a bet: how to resolve it (side/line), what to pay (potential_payout), and which reservation to move (D35). */
+/** What settlement needs about a bet: how to resolve it (line or runner), what to pay, which reservation to move (D35/D37). */
 export interface SettlementRow {
   id: string;
   userId: string;
   reservationId: string;
   side: BetSide;
-  lineValue: number;
+  lineValue: number | null;
+  runnerId: string | null;
   potentialPayout: bigint;
   status: BetStatus;
 }
-const SETTLEMENT_COLS = ['id', 'user_id', 'reservation_id', 'side', 'line_value', 'potential_payout', 'status'] as const;
+const SETTLEMENT_COLS = ['id', 'user_id', 'reservation_id', 'side', 'line_value', 'runner_id', 'potential_payout', 'status'] as const;
 interface SettlementQueryRow {
   id: string;
   user_id: string;
   reservation_id: string;
   side: BetSide;
-  line_value: number;
+  line_value: number | null;
+  runner_id: string | null;
   potential_payout: bigint;
   status: BetStatus;
 }
@@ -30,6 +32,7 @@ const toSettlementRow = (r: SettlementQueryRow): SettlementRow => ({
   reservationId: r.reservation_id,
   side: r.side,
   lineValue: r.line_value,
+  runnerId: r.runner_id,
   potentialPayout: r.potential_payout,
   status: r.status,
 });
@@ -41,7 +44,8 @@ export interface CreateBet {
   matchId: string;
   reservationId: string;
   side: BetSide;
-  lineValue: number;
+  lineValue: number | null; // fancy selection
+  runnerId: string | null; // runner selection (D37) — exactly one of the two is set
   price: bigint;
   stake: bigint;
   reserved: bigint;
@@ -76,6 +80,7 @@ export class BetRepo {
         reservation_id: b.reservationId,
         side: b.side,
         line_value: b.lineValue,
+        runner_id: b.runnerId,
         price: b.price,
         stake: b.stake,
         reserved: b.reserved,

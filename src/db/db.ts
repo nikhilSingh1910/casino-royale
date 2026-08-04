@@ -146,6 +146,10 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
       placed_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS bet_market_open_idx ON bet (market_id) WHERE status = 'open';
+    -- D37: runner markets. A bet carries EITHER a line (fancy) or a runner selection (match-odds/bookmaker).
+    ALTER TABLE bet ADD COLUMN IF NOT EXISTS runner_id uuid REFERENCES market_runner(id);
+    ALTER TABLE bet ALTER COLUMN line_value DROP NOT NULL;
+    ALTER TABLE cricket_match ADD COLUMN IF NOT EXISTS result text;
 
     CREATE TABLE IF NOT EXISTS operator_action (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

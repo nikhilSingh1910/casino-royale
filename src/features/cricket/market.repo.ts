@@ -128,4 +128,21 @@ export class MarketRepo {
   async setStatusForMarket(marketId: string, status: MarketStatus): Promise<void> {
     await this.db.updateTable('market').set({ status }).where('id', '=', marketId).execute();
   }
+
+  async getRunner(runnerId: string) {
+    return this.db
+      .selectFrom('market_runner')
+      .select(['id', 'market_id', 'runner_name', 'back_price', 'lay_price'])
+      .where('id', '=', runnerId)
+      .executeTakeFirst();
+  }
+
+  async runnersForMarket(marketId: string, limit: number) {
+    return this.db
+      .selectFrom('market_runner')
+      .select(['id', 'runner_name'])
+      .where('market_id', '=', marketId)
+      .limit(limit)
+      .execute();
+  }
 }

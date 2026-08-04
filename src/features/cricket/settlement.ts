@@ -35,3 +35,10 @@ export function resolveFancyBet(side: BetSide, line: number, actualRuns: number)
   const backWins = side === 'back' ? lineReached : !lineReached;
   return backWins ? 'won' : 'lost';
 }
+
+/** Runner markets (match-odds/bookmaker, D37): back wins iff it backed the winning runner; lay mirrors. */
+export function resolveRunnerBet(side: BetSide, betRunnerId: string, winningRunnerId: string): SessionOutcome {
+  const backedWinner = betRunnerId === winningRunnerId;
+  const backWins = side === 'back' ? backedWinner : !backedWinner;
+  return backWins ? 'won' : 'lost';
+}
