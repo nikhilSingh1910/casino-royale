@@ -1,0 +1,112 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { Kysely } from 'kysely';
+import { Database, KYSELY, MarketStatus, MarketType } from '../../db';
+
+@Injectable()
+export class MarketRepo {
+  constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
+
+  async createMarket(matchId: string, type: MarketType, name: string): Promise<{ id: string }> {
+    return this.db
+      .insertInto('market')
+      .values({ match_id: matchId, market_type: type, name })
+      .onConflict((oc) => oc.columns(['match_id', 'market_type', 'name']).doUpdateSet({ name }))
+      .returning('id')
+      .executeTakeFirstOrThrow();
+  }
+
+  async setRunner(marketId: string, name: string, backPrice: bigint, layPrice: bigint): Promise<void> {
+    await this.db
+      .insertInto('market_runner')
+      .values({ market_id: marketId, runner_name: name, back_price: backPrice, lay_price: layPrice })
+      .onConflict((oc) =>
+        oc.columns(['market_id', 'runner_name']).doUpdateSet({ back_price: backPrice, lay_price: layPrice }),
+      )
+      .execute();
+  }
+
+  async setFancy(marketId: string, overs: number, line: number, backPrice: bigint, layPrice: bigint): Promise<void> {
+    await this.db
+      .insertInto('fancy_market')
+      .values({ market_id: marketId, overs, line_value: line, back_price: backPrice, lay_price: layPrice })
+      .onConflict((oc) =>
+        oc.column('market_id').doUpdateSet({ line_value: line, back_price: backPrice, lay_price: layPrice, updated_at: new Date() }),
+      )
+      .execute();
+  }
+
+  async updateFancyLine(marketId: string, line: number, backPrice: bigint, layPrice: bigint): Promise<void> {
+    await this.db
+      .updateTable('fancy_market')
+      .set({ line_value: line, back_price: backPrice, lay_price: layPrice, updated_at: new Date() })
+      .where('market_id', '=', marketId)
+      .execute();
+  }
+
+  async setStatusForMatch(matchId: string, status: MarketStatus): Promise<void> {
+    await this.db.updateTable('market').set({ status }).where('match_id', '=', matchId).execute();
+  }
+
+  async setStatusForType(matchId: string, type: MarketType, status: MarketStatus): Promise<void> {
+    await this.db
+      .updateTable('market')
+      .set({ status })
+      .where('match_id', '=', matchId)
+      .where('market_type', '=', type)
+      .execute();
+  }
+
+  async suspendType(type: MarketType): Promise<void> {
+    await this.db
+      .updateTable('market')
+      .set({ status: 'suspended' })
+      .where('market_type', '=', type)
+      .where('status', '=', 'open')
+      .execute();
+  }
+
+  async reopenType(type: MarketType): Promise<void> {
+    await this.db
+      .updateTable('market')
+      .set({ status: 'open' })
+      .where('market_type', '=', type)
+      .where('status', '=', 'suspended')
+      .execute();
+  }
+
+  async marketsForMatch(matchId: string, limit: number) {
+    return this.db
+      .selectFrom('market')
+      .select(['id', 'market_type', 'name', 'status'])
+      .where('match_id', '=', matchId)
+      .orderBy('market_type', 'asc')
+      .limit(limit)
+      .execute();
+  }
+
+  async fanciesForMatch(matchId: string, limit: number) {
+    return this.db
+      .selectFrom('fancy_market as f')
+      .innerJoin('market as m', 'm.id', 'f.market_id')
+      .select(['f.market_id', 'f.overs', 'f.line_value', 'm.status'])
+      .where('m.match_id', '=', matchId)
+      .limit(limit)
+      .execute();
+  }
+
+  async getConfig(type: MarketType) {
+    return this.db
+      .selectFrom('market_config')
+      .selectAll()
+      .where('market_type', '=', type)
+      .executeTakeFirst();
+  }
+
+  async setEnabled(type: MarketType, enabled: boolean): Promise<void> {
+    await this.db.updateTable('market_config').set({ enabled }).where('market_type', '=', type).execute();
+  }
+
+  async setMaxStake(type: MarketType, maxStake: bigint): Promise<void> {
+    await this.db.updateTable('market_config').set({ max_stake: maxStake }).where('market_type', '=', type).execute();
+  }
+}

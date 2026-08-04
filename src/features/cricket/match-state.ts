@@ -26,3 +26,16 @@ export function deriveScore(balls: readonly BallEvent[]): MatchScore {
   }
   return { innings, runs, wickets, legalBalls };
 }
+
+/** Runs and legal balls within the first `overs` overs — the window a session market covers. */
+export function runsInOvers(balls: readonly BallEvent[], overs: number): { runs: number; legalBalls: number } {
+  let runs = 0;
+  let legalBalls = 0;
+  for (const b of balls) {
+    if (b.over < overs) {
+      runs += b.runsOffBat + b.extras;
+      if (b.isLegal) legalBalls += 1;
+    }
+  }
+  return { runs, legalBalls };
+}

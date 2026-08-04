@@ -90,5 +90,43 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
       received_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE (match_id, sequence)
     );
+
+    CREATE TABLE IF NOT EXISTS market (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      match_id text NOT NULL REFERENCES cricket_match(match_id),
+      market_type text NOT NULL CHECK (market_type IN ('match_odds', 'bookmaker', 'fancy')),
+      name text NOT NULL,
+      status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'suspended', 'settled')),
+      created_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (match_id, market_type, name)
+    );
+    CREATE TABLE IF NOT EXISTS market_runner (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      market_id uuid NOT NULL REFERENCES market(id) ON DELETE CASCADE,
+      runner_name text NOT NULL,
+      back_price bigint NOT NULL,
+      lay_price bigint NOT NULL,
+      UNIQUE (market_id, runner_name)
+    );
+    CREATE TABLE IF NOT EXISTS fancy_market (
+      market_id uuid PRIMARY KEY REFERENCES market(id) ON DELETE CASCADE,
+      overs int NOT NULL,
+      line_value int NOT NULL,
+      back_price bigint NOT NULL,
+      lay_price bigint NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS market_config (
+      market_type text PRIMARY KEY CHECK (market_type IN ('match_odds', 'bookmaker', 'fancy')),
+      enabled boolean NOT NULL DEFAULT true,
+      max_stake bigint NOT NULL,
+      bet_delay_seconds int NOT NULL DEFAULT 2,
+      session_threshold bigint NOT NULL DEFAULT 0
+    );
+    INSERT INTO market_config (market_type, enabled, max_stake, bet_delay_seconds, session_threshold)
+    VALUES ('match_odds', true, 100000, 1, 0),
+           ('bookmaker', true, 50000, 2, 0),
+           ('fancy', true, 25000, 2, 100000)
+    ON CONFLICT (market_type) DO NOTHING;
   `.execute(db);
 }

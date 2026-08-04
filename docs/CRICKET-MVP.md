@@ -301,7 +301,7 @@ fine under D32) · `XC1.9` recorded-fixture replay source for CI.
 > adapter (a stub behind the same interface — not testable here: network + token-gated); a richer
 > scorecard; "bets refused on a suspended match" is enforced at placement in **CM3**.
 
-### CM2 — Markets priced and repricing live · **L**
+### ✅ CM2 — Markets priced and repricing live · **L** — DONE 2026-08-04
 > **Proof:** a match shows all three groups; session lines reprice on every ball from the feed; a
 > market can be enabled/disabled and stake-limited purely via config, no deploy.
 
@@ -309,6 +309,14 @@ fine under D32) · `XC1.9` recorded-fixture replay source for CI.
 feed-derived) · `XC2.3` per-ball line repricing · `XC2.4` market-type config: enable/disable, stack,
 delay, session threshold (the §2.6 surface) · `XC2.5` prices as scaled integers (A2.4), never ladder
 ticks.
+
+> **DONE — verified** (44 tests green, real Postgres). Three market groups per match
+> (`match_odds`/`bookmaker`/`fancy`, HAR-grounded); session lines **reprice per ball** off the raw
+> store (the line is a pure function of the ball store, same discipline as CM1's score);
+> enable/disable + stake-limit **via `market_config`, no deploy**; scaled-integer prices. **Pricing
+> is a labelled placeholder** — a real cricket model is licensed, not built (C-c); CM2 proves the
+> *mechanic*. **Deferred:** operator price-setting UI for match-odds/bookmaker (`setRunner` exists;
+> admin surface → CM5); `bet_delay`/`session_threshold` config apply at placement (CM3).
 
 ### CM3 — A bet placed against live funds, with the book protected · **XL**
 > **Proof:** a fancy bet is placed against a live line and the **full stake reserves** in the ledger;

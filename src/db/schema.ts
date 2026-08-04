@@ -84,6 +84,47 @@ export interface RawBallEventTable {
   received_at: Generated<Date>;
 }
 
+export type MarketType = 'match_odds' | 'bookmaker' | 'fancy';
+export type MarketStatus = 'open' | 'suspended' | 'settled';
+
+/** A betting market on a match (CM2). Grounded in the HAR `market[]` / `fancy[]` model. */
+export interface MarketTable {
+  id: Generated<string>;
+  match_id: string;
+  market_type: MarketType;
+  name: string;
+  status: ColumnType<MarketStatus, MarketStatus | undefined, MarketStatus>;
+  created_at: Generated<Date>;
+}
+
+/** Runner back/lay prices for match-odds & bookmaker (scaled-integer prices — XC2.5). */
+export interface MarketRunnerTable {
+  id: Generated<string>;
+  market_id: string;
+  runner_name: string;
+  back_price: ColumnType<bigint, bigint, bigint>;
+  lay_price: ColumnType<bigint, bigint, bigint>;
+}
+
+/** A session/fancy line (e.g. "6 over runs"): line value + back/lay, repriced per ball. */
+export interface FancyMarketTable {
+  market_id: string;
+  overs: number;
+  line_value: ColumnType<number, number, number>;
+  back_price: ColumnType<bigint, bigint, bigint>;
+  lay_price: ColumnType<bigint, bigint, bigint>;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+/** Operator game config per market type (XC2.4) — changeable at runtime, no deploy. */
+export interface MarketConfigTable {
+  market_type: MarketType;
+  enabled: ColumnType<boolean, boolean | undefined, boolean>;
+  max_stake: ColumnType<bigint, bigint, bigint>;
+  bet_delay_seconds: ColumnType<number, number | undefined, number>;
+  session_threshold: ColumnType<bigint, bigint, bigint>;
+}
+
 export interface Database {
   ledger_entry: LedgerEntryTable;
   ledger_txn: LedgerTxnTable;
@@ -93,4 +134,8 @@ export interface Database {
   audit_log: AuditLogTable;
   cricket_match: CricketMatchTable;
   raw_ball_event: RawBallEventTable;
+  market: MarketTable;
+  market_runner: MarketRunnerTable;
+  fancy_market: FancyMarketTable;
+  market_config: MarketConfigTable;
 }
