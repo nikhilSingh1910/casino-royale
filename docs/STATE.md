@@ -108,7 +108,8 @@ and the decision log):
   changed the clone target). `web/` React 18 + Vite + TS; web check green — typecheck · lint · **11 vitest
   tests** · build. **Green King desktop exchange**: gold logo + inline header login, dark-green nav, the
   classic **three columns** — Sports sidebar · **Highlights** table with **1/X/2** blue-back/pink-lay pairs +
-  `BM`·`F`·`S` badges · **Open Bets** slip. In-play detail = score/over strip + Match Odds + Fancy
+  `BM`·`F`·`S` badges · **Open Bets** slip. An **In-Play page** (`/inplay`) with In-Play/Today/Tomorrow tabs
+  and a navy **Cricket** section (cricket-only — no fabricated other sports). In-play detail = score/over strip + Match Odds + Fancy
   (No/Rate/Yes/Rate). All four UI states; float-free money (§5 rule 5); balance in € per contract §8
   (King shows raw chips — flagged). The **verified engine was ported unchanged** (D40); only the front
   was rebuilt. Run: backend `pnpm start:dev`, then `cd web && pnpm dev`.

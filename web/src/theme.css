@@ -17,6 +17,7 @@
   --link: #1565c0;
   --live: #d32f2f;
   --green: #2e8b4e;
+  --navy: #2c3a67;
   --back: #a6d8ff;
   --back-2: #c7e6ff;
   --lay: #f6c6da;
@@ -73,6 +74,10 @@ a { color: var(--link); text-decoration: none; }
 .tabs { display: flex; gap: 2px; background: #dfe5e1; padding: 6px 6px 0; }
 .tab { padding: 8px 16px; font-weight: 700; color: var(--muted); cursor: pointer; border-radius: 5px 5px 0 0; background: #eef2ef; }
 .tab.active { background: #fff; color: var(--ink); }
+.subtabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.subtab { padding: 10px 22px; font-weight: 800; border-radius: 4px; background: #d7ddd9; color: var(--muted); cursor: pointer; border: 1px solid var(--line); }
+.subtab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.sect { background: var(--navy); color: #fff; font-weight: 800; padding: 10px 14px; }
 .hl { width: 100%; border-collapse: collapse; }
 .hl__colhead { display: grid; grid-template-columns: 1fr 132px 132px 132px 40px; background: #eef2ef; border-bottom: 1px solid var(--line); }
 .hl__colhead span { text-align: center; font-weight: 800; color: var(--muted); padding: 7px 0; font-size: 12px; }
