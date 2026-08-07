@@ -6,7 +6,8 @@ import { CricketRepo } from './cricket.repo';
 import { MarketRepo } from './market.repo';
 import { MarketRepricer } from './feed-ingest.service';
 import { scorecard } from './match-state';
-import { priceSessionRuns } from './pricing';
+import { priceBallByBall, priceSessionRuns } from './pricing';
+import { BallEvent } from '../../integrations/feed';
 
 const FANCY_WINDOWS = [6, 10] as const;
 const MARKETS_MAX = 100;
@@ -51,11 +52,16 @@ export interface OverBall {
   runs: number;
   wicket: boolean;
 }
+export interface RecentBall {
+  symbol: string;
+  kind: string;
+}
 export interface ScoreView {
   matchId: string;
   status: string;
   innings: InningsView[];
   currentOver: OverBall[];
+  recent: RecentBall[];
   summary: string | null;
 }
 export interface RunnerPrice {
@@ -93,6 +99,10 @@ export class MarketService implements MarketRepricer {
       const q = priceSessionRuns(overs, []);
       await this.repo.setFancy(m.id, overs, q.lineValue, q.backPrice, q.layPrice);
     }
+
+    // Ball-by-ball: next-ball outcomes as runners (back-only) — reuses the runner path (D41).
+    const bbb = await this.repo.createMarket(matchId, 'ball_by_ball', 'Ball By Ball');
+    for (const o of priceBallByBall()) await this.repo.setRunner(bbb.id, o.name, o.price, o.price);
   }
 
   /** Reprice a match's session lines from the raw ball store (XC2.3). Config- and status-aware. */
@@ -185,11 +195,13 @@ export class MarketService implements MarketRepricer {
       wickets: i.wickets,
       overs: `${Math.floor(i.legalBalls / 6)}.${i.legalBalls % 6}`,
     }));
+    const recent = [...balls].sort((a, b) => b.sequence - a.sequence).slice(0, 10).map(recentBall);
     return {
       matchId,
       status: match.status,
       innings,
       currentOver: sc.currentOver.map((b) => ({ runs: b.runsOffBat + b.extras, wicket: b.isWicket })),
+      recent,
       summary: summarise(innings),
     };
   }
@@ -239,6 +251,14 @@ function oneXtwo(name: string, runners: { name: string; back: bigint; lay: bigin
   const away = nonDraw.find((r) => r.name === t2) ?? nonDraw.find((r) => r !== home) ?? null;
   const px = (r: { back: bigint; lay: bigint } | null | undefined) => (r ? { back: r.back, lay: r.lay } : null);
   return { home: px(home), draw: px(draw), away: px(away) };
+}
+
+/** Map a ball to the Recent-Result strip's symbol + colour kind. */
+function recentBall(b: BallEvent): RecentBall {
+  if (b.isWicket) return { symbol: 'W', kind: 'wicket' };
+  if (b.extras > 0) return { symbol: 'E', kind: 'extra' };
+  const r = b.runsOffBat;
+  return { symbol: String(r), kind: r >= 6 ? 'six' : r >= 4 ? 'four' : r === 0 ? 'dot' : 'run' };
 }
 
 /** A simple two-innings lead — enough for the strip; not a full chase/target model (deferred). */

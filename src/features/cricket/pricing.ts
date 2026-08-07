@@ -25,3 +25,23 @@ export function priceSessionRuns(overs: number, balls: readonly BallEvent[]): Fa
   const projected = runs + Number((BigInt(remaining) * EXPECTED_RUNS_PER_100_BALLS) / 100n);
   return { lineValue: projected, backPrice: BACK_PRICE, layPrice: LAY_PRICE };
 }
+
+export interface BallOutcomeQuote {
+  name: string;
+  price: Price;
+}
+// PLACEHOLDER next-ball prices — a fixed reference set, not a real model (C-c). Back-only, integer scaled.
+const BALL_BOOK: [string, number][] = [
+  ['0 Runs', 21800],
+  ['1 Run', 26200],
+  ['2 Runs', 79200],
+  ['3 Runs', 110000],
+  ['4 Runs', 65200],
+  ['6 Runs', 122000],
+  ['Wicket', 68700],
+  ['Extra Runs', 86700],
+];
+export const BALL_OUTCOMES: readonly string[] = BALL_BOOK.map(([name]) => name);
+export function priceBallByBall(): BallOutcomeQuote[] {
+  return BALL_BOOK.map(([name, p]) => ({ name, price: price(p) }));
+}

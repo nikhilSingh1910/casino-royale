@@ -156,6 +156,24 @@ describe('cricket end-to-end (integration, real Postgres) — CM6', () => {
     expect((await cricket.getMatch('c4b'))?.result).toBeNull();
   });
 
+  it('ball-by-ball: back an outcome, settle it by the ball result', async () => {
+    const u = await fundedUser(1000);
+    const ms = await buildMatch('c9');
+    const bbb = findMarket(ms, 'ball_by_ball');
+    const runners = await db.selectFrom('market_runner').select(['id', 'runner_name', 'back_price']).where('market_id', '=', bbb).execute();
+    expect(runners).toHaveLength(8);
+    const four = runners.find((r) => r.runner_name === '4 Runs');
+    if (!four) throw new Error('no 4 Runs outcome');
+
+    await placement.placeRunnerBet({ userId: u, marketId: bbb, runnerId: four.id, side: 'back', stake: chips(100), seenPrice: four.back_price, idempotencyKey: randomUUID() });
+    expect(await bal(u)).toEqual({ available: 900n, reserved: 100n });
+
+    await settlement.settleOutcome(bbb, '4 Runs', 'trader:alice'); // the ball was a four
+    const profit = winnings(chips(100), price(four.back_price)) as bigint;
+    expect(await bal(u)).toEqual({ available: 1000n + profit, reserved: 0n });
+    await expectBalanced();
+  });
+
   it('voids a runner market and returns every stake', async () => {
     const u = await fundedUser(1000);
     const ms = await buildMatch('c4');

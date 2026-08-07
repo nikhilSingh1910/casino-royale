@@ -100,9 +100,7 @@ export class PlacementService {
     const market = await this.markets.getMarketWithFancy(input.marketId);
     if (!market) throw new BetRejectedError('market not found');
     if (market.status !== 'open') throw new BetRejectedError('market not open');
-    if (market.market_type !== 'match_odds' && market.market_type !== 'bookmaker') {
-      throw new BetRejectedError('not a runner market');
-    }
+    if (market.market_type === 'fancy') throw new BetRejectedError('not a runner market'); // fancy uses placeBet
 
     const cfg = await this.markets.getConfig(market.market_type);
     if (!cfg?.enabled) throw new BetRejectedError('market type disabled');

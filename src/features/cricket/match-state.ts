@@ -61,6 +61,13 @@ export function scorecard(balls: readonly BallEvent[]): Scorecard {
   return { innings, currentOver };
 }
 
+/** The ball-by-ball outcome a delivery produced (matches the ball_by_ball runner names). Pure. */
+export function ballOutcome(b: BallEvent): string {
+  if (b.isWicket) return 'Wicket';
+  if (b.extras > 0) return 'Extra Runs';
+  return b.runsOffBat === 1 ? '1 Run' : `${b.runsOffBat} Runs`;
+}
+
 /** Runs and legal balls within the first `overs` overs — the window a session market covers. */
 export function runsInOvers(balls: readonly BallEvent[], overs: number): { runs: number; legalBalls: number } {
   let runs = 0;

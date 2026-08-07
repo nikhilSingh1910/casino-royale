@@ -880,3 +880,25 @@ fabricated markets, §3.10). Real cricket feed, live push, prod `/api` routing c
 
 **Consequence.** One frontend rebuild against the same proven engine, in Kingexch365's green Betfair
 dressing — the fastest honest path to the clone the client wants, with the money core untouched.
+
+---
+
+### D41 — Ball-by-ball as a runner market (CM-web, cricket)
+
+**Context.** Kingexch365's Ball-By-Ball page bets on the **next ball's outcome** — 0/1/2/3/4/6 runs,
+Wicket, Extra Runs — each a back price, plus a "Recent Result" strip of the last deliveries.
+
+**Decision.** Model it as a **runner market** (`market_type='ball_by_ball'`, one runner per outcome),
+so it **reuses the runner path unchanged**: `placeRunnerBet`, and settlement via `settleOutcome`
+(resolve by the outcome the ball produced, reusing `resolveRunnerBet` + the drain). Prices are a
+**labelled placeholder** like session pricing (C-c). The market-type CHECK is widened idempotently
+(drop old + new constraint names, re-add). Back-only (no lay). The **Recent Result** strip comes from
+`scorecard`'s ball store via a pure `ballOutcome`/`recentBall` fold — no fabrication (§3.10).
+
+**Deferred:** the **auto per-ball lifecycle** — opening a fresh next-ball market and settling the
+previous one automatically as each delivery streams in — needs the live-feed loop (not built).
+`settleOutcome` settles a market by a given result, so it is settleable, just not auto-cycled. Also:
+the per-cell "size" is a static display (the market's max, matching King's number), not live liquidity.
+
+**Consequence.** A real, non-faked ball-by-ball page — betable and settleable — built entirely by
+reusing the runner infrastructure; only presentation + a placeholder price book are new.

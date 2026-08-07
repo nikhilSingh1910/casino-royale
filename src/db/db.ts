@@ -151,6 +151,16 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
     ALTER TABLE bet ALTER COLUMN line_value DROP NOT NULL;
     ALTER TABLE cricket_match ADD COLUMN IF NOT EXISTS result text;
 
+    -- Widen the market-type CHECKs to include ball_by_ball (idempotent: drop old + new names, re-add).
+    ALTER TABLE market DROP CONSTRAINT IF EXISTS market_market_type_check;
+    ALTER TABLE market DROP CONSTRAINT IF EXISTS market_type_ck;
+    ALTER TABLE market ADD CONSTRAINT market_type_ck CHECK (market_type IN ('match_odds', 'bookmaker', 'fancy', 'ball_by_ball'));
+    ALTER TABLE market_config DROP CONSTRAINT IF EXISTS market_config_market_type_check;
+    ALTER TABLE market_config DROP CONSTRAINT IF EXISTS market_config_type_ck;
+    ALTER TABLE market_config ADD CONSTRAINT market_config_type_ck CHECK (market_type IN ('match_odds', 'bookmaker', 'fancy', 'ball_by_ball'));
+    INSERT INTO market_config (market_type, enabled, max_stake, bet_delay_seconds, session_threshold)
+    VALUES ('ball_by_ball', true, 100000, 1, 0) ON CONFLICT (market_type) DO NOTHING;
+
     CREATE TABLE IF NOT EXISTS operator_action (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       kind text NOT NULL CHECK (kind IN ('void', 'resettle')),

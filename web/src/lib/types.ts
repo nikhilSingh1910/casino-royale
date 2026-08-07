@@ -1,4 +1,4 @@
-export type MarketType = 'match_odds' | 'bookmaker' | 'fancy';
+export type MarketType = 'match_odds' | 'bookmaker' | 'fancy' | 'ball_by_ball';
 export type MarketStatus = 'open' | 'suspended' | 'settled';
 export type Side = 'back' | 'lay';
 
@@ -56,11 +56,16 @@ export interface InningsDto {
   wickets: number;
   overs: string;
 }
+export interface RecentBallDto {
+  symbol: string;
+  kind: string;
+}
 export interface ScoreDto {
   matchId: string;
   status: string;
   innings: InningsDto[];
   currentOver: OverBallDto[];
+  recent: RecentBallDto[];
   summary: string | null;
 }
 export interface PlacedBetDto {

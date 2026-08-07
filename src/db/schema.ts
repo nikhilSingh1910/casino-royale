@@ -85,7 +85,7 @@ export interface RawBallEventTable {
   received_at: Generated<Date>;
 }
 
-export type MarketType = 'match_odds' | 'bookmaker' | 'fancy';
+export type MarketType = 'match_odds' | 'bookmaker' | 'fancy' | 'ball_by_ball';
 export type MarketStatus = 'open' | 'suspended' | 'settled';
 
 /** A betting market on a match (CM2). Grounded in the HAR `market[]` / `fancy[]` model. */

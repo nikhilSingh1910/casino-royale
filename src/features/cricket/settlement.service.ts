@@ -116,6 +116,24 @@ export class SettlementService {
     return out;
   }
 
+  /** Settle a single runner market (e.g. ball-by-ball) by the winning outcome name — reuses the runner drain. */
+  async settleOutcome(marketId: string, winningOutcome: string, actor: string): Promise<MarketSettlement> {
+    const market = await this.markets.getMarketWithFancy(marketId);
+    if (!market) return { marketId, status: 'not-fancy', actualRuns: null, settled: 0 };
+    if (market.status === 'settled') return { marketId, status: 'already', actualRuns: null, settled: 0 };
+    const winner = (await this.markets.runnersForMarket(marketId, RESETTLE_MAX)).find((r) => r.runner_name === winningOutcome);
+    if (!winner) throw new MatchResultError(`'${winningOutcome}' is not a runner in market ${marketId}`);
+
+    await this.markets.setStatusForMarket(marketId, 'suspended');
+    const settled = await this.drainOpenBets(marketId, (bet) => {
+      if (bet.runnerId === null) throw new Error('runner market bet without a runner');
+      return resolveRunnerBet(bet.side, bet.runnerId, winner.id);
+    });
+    await this.markets.setStatusForMarket(marketId, 'settled');
+    await this.audit.record({ actor, action: 'ballbyball.settle', subject: marketId, after: { outcome: winningOutcome, settled } });
+    return { marketId, status: 'settled', actualRuns: null, settled };
+  }
+
   /** Void a market (abandonment / no-result, XC4.3): every open bet's stake is returned. Any market type (D37). */
   async voidMarket(marketId: string, actor: string, reason: string): Promise<MarketSettlement> {
     const market = await this.markets.getMarketWithFancy(marketId);

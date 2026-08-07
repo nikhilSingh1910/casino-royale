@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { FancyTable } from '../components/FancyTable';
 import { MarketOdds } from '../components/MarketOdds';
@@ -32,6 +32,11 @@ export function MatchPage() {
         </div>
       </div>
       <ScoreStrip matchId={id} />
+      {match.markets.some((m) => m.type === 'ball_by_ball') && (
+        <Link to={`/bbb/${id}`} style={{ display: 'inline-block', background: 'var(--green)', color: '#fff', fontWeight: 800, padding: '9px 16px', borderRadius: 4, margin: '0 3px 10px' }}>
+          🏏 Ball By Ball
+        </Link>
+      )}
       {match.markets.length === 0 ? (
         <div className="panel"><EmptyState title="No markets open" hint="Odds appear once trading opens." /></div>
       ) : (

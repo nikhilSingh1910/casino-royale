@@ -1,6 +1,6 @@
 import * as fc from 'fast-check';
 import { BallEvent } from '../../integrations/feed';
-import { deriveScore, scorecard } from './match-state';
+import { ballOutcome, deriveScore, scorecard } from './match-state';
 
 function ball(sequence: number, runsOffBat: number, extras = 0, isWicket = false, innings = 1): BallEvent {
   return {
@@ -66,5 +66,16 @@ describe('scorecard (in-play strip, pure)', () => {
 
   it('is empty before a ball is bowled', () => {
     expect(scorecard([])).toEqual({ innings: [], currentOver: [] });
+  });
+});
+
+describe('ballOutcome (ball-by-ball, pure)', () => {
+  it('maps a delivery to its outcome name', () => {
+    expect(ballOutcome(ball(1, 0))).toBe('0 Runs');
+    expect(ballOutcome(ball(1, 1))).toBe('1 Run');
+    expect(ballOutcome(ball(1, 4))).toBe('4 Runs');
+    expect(ballOutcome(ball(1, 6))).toBe('6 Runs');
+    expect(ballOutcome(ball(1, 0, 0, true))).toBe('Wicket');
+    expect(ballOutcome(ball(1, 0, 2))).toBe('Extra Runs');
   });
 });

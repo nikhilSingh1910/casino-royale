@@ -78,6 +78,8 @@ describe('cricket HTTP API (e2e, real Postgres + Fastify) — web track', () => 
     const fancy = view.markets.find((m: { type: string }) => m.type === 'fancy');
     expect(typeof fancy.fancy.back).toBe('string');
     expect(fancy.fancy.overs).toEqual(expect.any(Number));
+    const bbb = view.markets.find((m: { type: string }) => m.type === 'ball_by_ball');
+    expect(bbb.runners).toHaveLength(8); // 0/1/2/3/4/6 runs, Wicket, Extra
   });
 
   it('GET /matches/unknown → 404', async () => {
