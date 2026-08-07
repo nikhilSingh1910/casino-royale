@@ -32,7 +32,7 @@ export function Header() {
   return (
     <header className="hdr">
       <div className="brand" onClick={() => navigate('/')} title="Home">
-        King
+        Kestrel
       </div>
       <div className="hdr__spacer" />
       {token ? (
