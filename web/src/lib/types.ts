@@ -2,12 +2,17 @@ export type MarketType = 'match_odds' | 'bookmaker' | 'fancy';
 export type MarketStatus = 'open' | 'suspended' | 'settled';
 export type Side = 'back' | 'lay';
 
-export interface MatchSummary {
+export interface RunnerPriceDto {
+  back: string;
+  lay: string;
+}
+export interface MatchListDto {
   id: string;
   name: string;
   competition: string;
   status: string;
   startsAt: string;
+  odds: { home: RunnerPriceDto | null; draw: RunnerPriceDto | null; away: RunnerPriceDto | null };
 }
 export interface RunnerDto {
   id: string;

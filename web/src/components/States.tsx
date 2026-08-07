@@ -1,19 +1,14 @@
-export function LoadingCards({ rows = 3 }: { rows?: number }) {
+export function Loading({ rows = 6 }: { rows?: number }) {
   return (
-    <div aria-busy="true" aria-label="Loading">
+    <div aria-busy="true" aria-label="Loading" style={{ padding: 10 }}>
       {Array.from({ length: rows }).map((_, i) => (
-        <div className="card" key={i}>
-          <div className="card__body">
-            <div className="skeleton" style={{ height: 20, width: '45%', marginBottom: 12 }} />
-            <div className="skeleton" style={{ height: 44 }} />
-          </div>
-        </div>
+        <div className="skeleton" style={{ height: 34, marginBottom: 8 }} key={i} />
       ))}
     </div>
   );
 }
 
-export function EmptyState({ icon = '📭', title, hint }: { icon?: string; title: string; hint?: string }) {
+export function EmptyState({ icon = '🏏', title, hint }: { icon?: string; title: string; hint?: string }) {
   return (
     <div className="state">
       <div className="state__icon">{icon}</div>
@@ -30,7 +25,7 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry }:
       <div className="state__title">{title}</div>
       {message && <div>{message}</div>}
       {onRetry && (
-        <button className="btn btn--ghost" style={{ marginTop: 14 }} onClick={onRetry}>
+        <button className="btn-link" style={{ marginTop: 12 }} onClick={onRetry}>
           Try again
         </button>
       )}

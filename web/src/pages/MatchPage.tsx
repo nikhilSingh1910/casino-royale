@@ -1,56 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { BetSlip } from '../components/BetSlip';
-import { FancyCard } from '../components/FancyCard';
-import { MarketCard } from '../components/MarketCard';
+import { FancyTable } from '../components/FancyTable';
+import { MarketOdds } from '../components/MarketOdds';
 import { ScoreStrip } from '../components/ScoreStrip';
-import { EmptyState, ErrorState, LoadingCards } from '../components/States';
-import type { Selection } from '../lib/types';
+import { EmptyState, ErrorState, Loading } from '../components/States';
 
 export function MatchPage() {
   const { id = '' } = useParams();
-  const [selection, setSelection] = useState<Selection | null>(null);
   const q = useQuery({ queryKey: ['match', id], queryFn: () => api.match(id), enabled: !!id });
 
-  if (q.isLoading) return <LoadingCards rows={4} />;
+  if (q.isLoading) return <div className="panel"><Loading /></div>;
   if (q.isError) {
     if (q.error instanceof ApiError && q.error.status === 404) {
-      return <EmptyState icon="🔍" title="Match not found" hint="It may have finished or been removed." />;
+      return <div className="panel"><EmptyState icon="🔍" title="Match not found" hint="It may have finished or been removed." /></div>;
     }
-    return <ErrorState message="Couldn’t load this match." onRetry={() => void q.refetch()} />;
+    return <div className="panel"><ErrorState message="Couldn’t load this match." onRetry={() => void q.refetch()} /></div>;
   }
 
   const match = q.data;
   if (!match) return null;
-
   const runnerMarkets = match.markets.filter((m) => m.type === 'match_odds' || m.type === 'bookmaker');
   const fancyMarkets = match.markets.filter((m) => m.type === 'fancy');
 
   return (
-    <>
-      <div className="mkt">
-        <div className="mkt__bar">
+    <div>
+      <div className="panel" style={{ marginBottom: 10 }}>
+        <div className="panel__bar">
           {match.name}
-          <span style={{ marginLeft: 'auto', fontWeight: 600, opacity: 0.85, fontSize: 12.5 }}>{match.competition}</span>
+          <span style={{ marginLeft: 'auto', fontWeight: 600, opacity: 0.85 }}>{match.competition}</span>
         </div>
       </div>
-
       <ScoreStrip matchId={id} />
-
       {match.markets.length === 0 ? (
-        <EmptyState title="No markets open" hint="Odds appear once trading opens." />
+        <div className="panel"><EmptyState title="No markets open" hint="Odds appear once trading opens." /></div>
       ) : (
         <>
           {runnerMarkets.map((m) => (
-            <MarketCard key={m.id} market={m} selection={selection} onSelect={setSelection} />
+            <div style={{ marginBottom: 10 }} key={m.id}>
+              <MarketOdds market={m} />
+            </div>
           ))}
-          <FancyCard markets={fancyMarkets} selection={selection} onSelect={setSelection} />
+          <FancyTable markets={fancyMarkets} />
         </>
       )}
-
-      {selection && <BetSlip selection={selection} matchId={id} onClose={() => setSelection(null)} />}
-    </>
+    </div>
   );
 }

@@ -63,7 +63,10 @@ describe('cricket HTTP API (e2e, real Postgres + Fastify) — web track', () => 
 
     await seedMatch('w1');
     const res = await app.inject({ method: 'GET', url: '/matches' });
-    expect(res.json()).toMatchObject([{ id: 'w1', name: 'India v Australia', status: 'scheduled' }]);
+    const list = res.json() as Array<{ id: string; name: string; odds: { home: { back: string } | null; draw: unknown } }>;
+    expect(list[0]).toMatchObject({ id: 'w1', name: 'India v Australia' });
+    expect(typeof list[0]?.odds.home?.back).toBe('string'); // 1/X/2 top-of-book, prices as strings
+    expect(list[0]?.odds.draw).toBeNull(); // 2-runner match → no draw
   });
 
   it('GET /matches/:id — markets, runners and fancy with prices as strings', async () => {

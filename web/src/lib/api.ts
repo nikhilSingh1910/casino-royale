@@ -1,4 +1,4 @@
-import type { BalanceDto, MatchSummary, MatchViewDto, PlacedBetDto, ScoreDto, Side } from './types';
+import type { BalanceDto, MatchListDto, MatchViewDto, PlacedBetDto, ScoreDto, Side } from './types';
 
 const BASE = '/api'; // dev-proxied to the Nest backend (vite.config)
 
@@ -49,7 +49,7 @@ export interface PlaceRunner {
 export const api = {
   signup: (email: string, password: string) => req<{ userId: string }>('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
   login: (email: string, password: string) => req<{ token: string; userId: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  matches: () => req<MatchSummary[]>('/matches'),
+  matches: () => req<MatchListDto[]>('/matches'),
   match: (id: string) => req<MatchViewDto>(`/matches/${id}`),
   score: (id: string) => req<ScoreDto>(`/matches/${id}/score`),
   balance: (token: string) => req<BalanceDto>('/me/balance', {}, token),

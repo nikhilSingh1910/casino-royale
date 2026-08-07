@@ -1,20 +1,31 @@
 import { Route, Routes } from 'react-router-dom';
 import { Header } from './components/Header';
-import { LobbyPage } from './pages/LobbyPage';
-import { LoginPage } from './pages/LoginPage';
+import { Nav } from './components/Nav';
+import { OpenBets } from './components/OpenBets';
+import { Sidebar } from './components/Sidebar';
+import { SelectionProvider } from './lib/selection';
+import { HomePage } from './pages/HomePage';
 import { MatchPage } from './pages/MatchPage';
 
 export function App() {
   return (
-    <div className="app">
+    <SelectionProvider>
       <Header />
-      <main className="main">
-        <Routes>
-          <Route path="/" element={<LobbyPage />} />
-          <Route path="/m/:id" element={<MatchPage />} />
-          <Route path="/login" element={<LoginPage />} />
-        </Routes>
-      </main>
-    </div>
+      <Nav />
+      <div className="shell">
+        <aside>
+          <Sidebar />
+        </aside>
+        <main>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/m/:id" element={<MatchPage />} />
+          </Routes>
+        </main>
+        <aside>
+          <OpenBets />
+        </aside>
+      </div>
+    </SelectionProvider>
   );
 }

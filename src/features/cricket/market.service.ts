@@ -58,6 +58,18 @@ export interface ScoreView {
   currentOver: OverBall[];
   summary: string | null;
 }
+export interface RunnerPrice {
+  back: bigint;
+  lay: bigint;
+}
+export interface MatchListItem {
+  id: string;
+  name: string;
+  competition: string;
+  status: string;
+  startsAt: Date;
+  odds: { home: RunnerPrice | null; draw: RunnerPrice | null; away: RunnerPrice | null };
+}
 
 @Injectable()
 export class MarketService implements MarketRepricer {
@@ -134,9 +146,27 @@ export class MarketService implements MarketRepricer {
     if (m?.status === 'suspended') await this.repo.setStatusForMarket(marketId, 'open');
   }
 
-  /** The lobby list — matches, soonest first (public read). */
-  listMatches() {
-    return this.cricketRepo.listMatches(MARKETS_MAX);
+  /** The lobby list — matches with their 1/X/2 match-odds top-of-book (one grouped query, no N+1). */
+  async listMatches(): Promise<MatchListItem[]> {
+    const matches = await this.cricketRepo.listMatches(MARKETS_MAX);
+    const runners = await this.repo.matchOddsRunners(
+      matches.map((m) => m.match_id),
+      RUNNERS_MAX,
+    );
+    const byMatch = new Map<string, { name: string; back: bigint; lay: bigint }[]>();
+    for (const r of runners) {
+      const arr = byMatch.get(r.match_id) ?? [];
+      arr.push({ name: r.runner_name, back: r.back_price, lay: r.lay_price });
+      byMatch.set(r.match_id, arr);
+    }
+    return matches.map((m) => ({
+      id: m.match_id,
+      name: m.name,
+      competition: m.competition,
+      status: m.status,
+      startsAt: m.starts_at,
+      odds: oneXtwo(m.name, byMatch.get(m.match_id) ?? []),
+    }));
   }
 
   /** The in-play score strip: per-innings totals + the current over, folded from the raw ball store. */
@@ -198,6 +228,17 @@ export class MarketService implements MarketRepricer {
       })),
     };
   }
+}
+
+/** Map a match's match-odds runners to 1 / X / 2 (home / draw / away), by team name with an order fallback. */
+function oneXtwo(name: string, runners: { name: string; back: bigint; lay: bigint }[]): MatchListItem['odds'] {
+  const [t1 = '', t2 = ''] = name.split(/\s+v\s+/i).map((t) => t.trim());
+  const draw = runners.find((r) => /draw/i.test(r.name)) ?? null;
+  const nonDraw = runners.filter((r) => r !== draw);
+  const home = nonDraw.find((r) => r.name === t1) ?? nonDraw[0] ?? null;
+  const away = nonDraw.find((r) => r.name === t2) ?? nonDraw.find((r) => r !== home) ?? null;
+  const px = (r: { back: bigint; lay: bigint } | null | undefined) => (r ? { back: r.back, lay: r.lay } : null);
+  return { home: px(home), draw: px(draw), away: px(away) };
 }
 
 /** A simple two-innings lead — enough for the strip; not a full chase/target model (deferred). */

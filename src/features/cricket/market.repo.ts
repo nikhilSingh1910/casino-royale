@@ -157,6 +157,19 @@ export class MarketRepo {
       .execute();
   }
 
+  /** Match-odds runners across many matches — one query for the lobby's 1/X/2 columns (no N+1). */
+  async matchOddsRunners(matchIds: readonly string[], limit: number) {
+    if (matchIds.length === 0) return [];
+    return this.db
+      .selectFrom('market_runner as r')
+      .innerJoin('market as m', 'm.id', 'r.market_id')
+      .select(['m.match_id', 'r.runner_name', 'r.back_price', 'r.lay_price'])
+      .where('m.market_type', '=', 'match_odds')
+      .where('m.match_id', 'in', [...matchIds])
+      .limit(limit)
+      .execute();
+  }
+
   /** All of a match's fancy lines with prices, tagged by market — one query for the market view. */
   async fancyLinesForMatch(matchId: string, limit: number) {
     return this.db

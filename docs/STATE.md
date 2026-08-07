@@ -104,16 +104,18 @@ and the decision log):
   userId from the session, never the body); money as integer-minor-unit strings; one global
   `DomainExceptionFilter` maps zod → 400 and typed domain errors to their 4xx (closed the deferred
   "zod→400" gap app-wide).
-- ✅ **Frontend — top5050 parity** — DONE (D39, re-skinned from D38's "modern refit" after the client sent
-  real screenshots). `web/` React 18 + Vite + TS; web check green — typecheck · lint · **16 vitest tests** ·
-  build. **Light + purple**, `LG`/`KH` runner ladder, grouped **Fancy** (No/Rate/Yes/Rate), the in-play
-  **score + per-ball over strip**, suspended rows — login → lobby → in-play view + bet slip → live wallet,
-  **all four UI states**. Float-free money (§5 rule 5, incl. `formatRate`); balance in € per contract §8
-  (prototype shows raw chips — flagged). Run: backend `pnpm start:dev`, then `cd web && pnpm dev`.
-- ✅ **Score endpoint** — DONE (D39). `GET /matches/:id/score` — per-innings totals + current over from a
-  pure `scorecard()` fold over `raw_ball_event`; team-per-innings by match-name convention (no toss model,
-  D37). Frontend `ScoreStrip` polls it. *Deferred:* live push (polling now), chase/target summary,
-  Min/Max + Position values, prod `/api` routing (CORS/proxy).
+- ✅ **Frontend — Kingexch365 parity** — DONE (**D40**, re-skinned from the top5050 look after the client
+  changed the clone target). `web/` React 18 + Vite + TS; web check green — typecheck · lint · **11 vitest
+  tests** · build. **Green King desktop exchange**: gold logo + inline header login, dark-green nav, the
+  classic **three columns** — Sports sidebar · **Highlights** table with **1/X/2** blue-back/pink-lay pairs +
+  `BM`·`F`·`S` badges · **Open Bets** slip. In-play detail = score/over strip + Match Odds + Fancy
+  (No/Rate/Yes/Rate). All four UI states; float-free money (§5 rule 5); balance in € per contract §8
+  (King shows raw chips — flagged). The **verified engine was ported unchanged** (D40); only the front
+  was rebuilt. Run: backend `pnpm start:dev`, then `cd web && pnpm dev`.
+- ✅ **Score endpoint** (D39) + **lobby 1/X/2 odds** (D40) — `GET /matches/:id/score` (per-innings + current
+  over from `scorecard()`); `GET /matches` now carries each match's match-odds top-of-book (one grouped
+  query, no N+1). *Deferred:* live push (polling), chase/target summary, inline lobby betting (needs ids
+  in the list), non-cricket sports/casino (coming-soon states), prod `/api` routing.
 - **Per-runner operator liability / exposure** — the §5-rule-11 formula is binary; multi-runner needs a
   per-runner worst case (D37). Runner auto-suspend is off until then.
 - **Per-user stake factoring** (`XC3.7`/`XC5.3`) and **timed bet-delay** (`XC3.4`).

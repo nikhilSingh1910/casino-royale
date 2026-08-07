@@ -847,3 +847,36 @@ present, values await the exposure/limits surface); prod `/api` routing (CORS/pr
 
 **Consequence.** The app now reads as the client's product, and the "per-ball" view they asked for is
 real — score + over strip from the append-only ball store, on the same verified API.
+
+---
+
+### D40 — Pivot the clone target to Kingexch365; port the engine, rebuild the front (supersedes D39's look)
+
+**Context.** The client changed the clone target from top5050 to **Kingexch365.com** and asked to
+"start afresh." Kingexch365 is the **same product family** (Diamond-style cricket exchange + casino)
+but a different look: **dark-green** theme, gold cursive **"King"** logo, red login, and the classic
+desktop **Betfair three-column** layout — left **Sports** sidebar, centre **Highlights** market table
+with **1 / X / 2** (home/draw/away) blue-back/pink-lay pairs and `BM`·`F`·`S` badges, right **Open
+Bets** — vs top5050's purple, mobile-first, LG/KH layout.
+
+**Decision (client-chosen).**
+1. **Port the engine, rebuild the front.** The verified backend — chip **ledger**, cricket markets,
+   **settlement**, **trading console**, the HTTP **API**, 113 tests — is product-agnostic and stays
+   **unchanged**; re-deriving that money code would risk the exact reconciliation/settlement bugs the
+   project eliminated. Only the **frontend** (`web/`) is scrubbed and rebuilt to the Kingexch365 look;
+   the tested, float-free **money/format module** (§5 rule 5) is kept, not re-derived.
+2. **Play-money stays (D32).** Virtual chips, no real payments/KYC — unchanged. The clone is design +
+   feature parity only.
+3. **Layout.** Desktop three-column exchange: Sports sidebar · Highlights/markets (1/X/2, our runners
+   map home=runner[0], draw=the-draw runner if present, away=runner[last]) · Open Bets. In-play detail
+   reuses the score/over strip (D39) + Match Odds + Fancy. Login moves inline to the header (King-style).
+4. **CLAUDE.md stays binding.** The engineering contract is about *how* we build (money=integer, the
+   loop, layer boundaries, single-owner rules) — product-agnostic, so it governs the King clone too.
+   `PRD.md` Part I already covers this exchange family, Kingexch365 included.
+
+**Deferred / out of scope for the clone now:** the non-cricket sports (Tennis/Soccer/Racing) and the
+casino/Vimaan games — nav items present, but they render honest "coming soon" empty states (no
+fabricated markets, §3.10). Real cricket feed, live push, prod `/api` routing carry over from before.
+
+**Consequence.** One frontend rebuild against the same proven engine, in Kingexch365's green Betfair
+dressing — the fastest honest path to the clone the client wants, with the money core untouched.

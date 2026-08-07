@@ -26,7 +26,7 @@ export function ScoreStrip({ matchId }: { matchId: string }) {
         {s.summary && <div className="score__line score__lead">{s.summary}</div>}
         {s.currentOver.length > 0 && (
           <div className="over">
-            <span className="over__label">Over</span>
+            <span style={{ fontWeight: 700, opacity: 0.9 }}>Over</span>
             {s.currentOver.map((b, idx) => (
               <span className={ballClass(b)} key={idx}>
                 {ballText(b)}
@@ -36,9 +36,6 @@ export function ScoreStrip({ matchId }: { matchId: string }) {
         )}
       </div>
       <div className="score__status">{s.status === 'inplay' ? 'Live' : s.status}</div>
-      <button className="score__refresh" title="Refresh" onClick={() => void q.refetch()}>
-        ⟳
-      </button>
     </div>
   );
 }

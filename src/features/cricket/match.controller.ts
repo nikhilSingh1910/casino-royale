@@ -1,5 +1,7 @@
 import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
-import { MarketService, MatchView } from './market.service';
+import { MarketService, MatchView, RunnerPrice } from './market.service';
+
+const serPrice = (p: RunnerPrice | null) => (p ? { back: p.back.toString(), lay: p.lay.toString() } : null);
 
 /** Public market data for the lobby and market view (D37/CM-web). Prices cross the wire as strings. */
 @Controller('matches')
@@ -9,7 +11,14 @@ export class MatchController {
   @Get()
   async list() {
     const matches = await this.markets.listMatches();
-    return matches.map((m) => ({ id: m.match_id, name: m.name, competition: m.competition, status: m.status, startsAt: m.starts_at }));
+    return matches.map((m) => ({
+      id: m.id,
+      name: m.name,
+      competition: m.competition,
+      status: m.status,
+      startsAt: m.startsAt,
+      odds: { home: serPrice(m.odds.home), draw: serPrice(m.odds.draw), away: serPrice(m.odds.away) },
+    }));
   }
 
   @Get(':id')
