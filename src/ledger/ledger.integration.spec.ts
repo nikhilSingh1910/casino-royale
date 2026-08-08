@@ -75,6 +75,21 @@ describe('LedgerService (integration, real Postgres) — M1', () => {
     expect((await ledger.balance(u)).available as bigint).toBe(60n); // reserved once, not twice
   });
 
+  it('reserve is atomic with its onReserved hook — a throw rolls the reservation back (D44)', async () => {
+    const u = user();
+    await ledger.topUp(u, chips(100), randomUUID());
+    await expect(
+      ledger.reserve(u, randomUUID(), chips(40), randomUUID(), async () => {
+        throw new Error('hook failed');
+      }),
+    ).rejects.toThrow('hook failed');
+    const bal = await ledger.balance(u);
+    expect(bal.available as bigint).toBe(100n); // reserve rolled back — nothing moved
+    expect(bal.reserved as bigint).toBe(0n);
+    expect((await db.selectFrom('chip_reservation').selectAll().execute()).length).toBe(0);
+    expect((await ledger.verifyIntegrity()).sumsToZero).toBe(true);
+  });
+
   it('will not settle the same reservation twice', async () => {
     const u = user();
     await ledger.topUp(u, chips(100), randomUUID());

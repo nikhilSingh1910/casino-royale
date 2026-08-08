@@ -105,21 +105,20 @@ describe('bet placement (integration, real Postgres) — CM3', () => {
     expect((await ledger.balance(u)).reserved as bigint).toBe(40n); // reserved once, not twice
   });
 
-  it('heals a crash between reserve and bet-create without double-reserving', async () => {
+  it('reserve + bet-create commit atomically — no orphaned reservation is possible (D44)', async () => {
     const u = await fundedUser(1000);
     const { marketId, line, backPrice } = await fancyMarket('m7');
     const key = randomUUID();
-    // Simulate: the ledger reserve committed, but the process died before bets.create ran.
-    await ledger.reserve(u, `bet:${key}`, chips(100), key);
-    expect((await ledger.balance(u)).reserved as bigint).toBe(100n);
+    const bet = await placement.placeBet({ userId: u, marketId, side: 'back', stake: chips(100), seenLineValue: line, seenPrice: backPrice, idempotencyKey: key });
 
-    // Retry with the same key: must not reserve twice, and the bet must reference the real row.
-    await placement.placeBet({ userId: u, marketId, side: 'back', stake: chips(100), seenLineValue: line, seenPrice: backPrice, idempotencyKey: key });
-    expect((await ledger.balance(u)).reserved as bigint).toBe(100n); // still once, not 200
-    const stored = await db.selectFrom('bet').select('reservation_id').where('idempotency_key', '=', key).executeTakeFirst();
+    // the bet row and its chip_reservation are both present and mutually consistent — one transaction, no orphan
+    const res = await db.selectFrom('chip_reservation').select(['status', 'amount']).where('reservation_id', '=', `bet:${key}`).executeTakeFirst();
+    expect(res?.status).toBe('open');
+    expect(res?.amount as bigint).toBe(100n);
+    const stored = await db.selectFrom('bet').select('reservation_id').where('id', '=', bet.id).executeTakeFirst();
     expect(stored?.reservation_id).toBe(`bet:${key}`);
-    const res = await db.selectFrom('chip_reservation').select('reservation_id').where('reservation_id', '=', `bet:${key}`).executeTakeFirst();
-    expect(res).toBeTruthy(); // bet.reservation_id points at a chip_reservation that exists
+    expect((await ledger.balance(u)).reserved as bigint).toBe(100n);
+    expect((await ledger.verifyIntegrity()).reservedMatchesOpenReservations).toBe(true);
   });
 
   it('auto-suspends a market that breaches its liability cap', async () => {

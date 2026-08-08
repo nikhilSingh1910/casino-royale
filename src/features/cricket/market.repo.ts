@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Kysely } from 'kysely';
-import { Database, KYSELY, MarketStatus, MarketType } from '../../db';
+import { Database, Executor, KYSELY, MarketStatus, MarketType } from '../../db';
 
 @Injectable()
 export class MarketRepo {
@@ -125,8 +125,14 @@ export class MarketRepo {
     return { ...m, fancy: fancy ?? null };
   }
 
-  async setStatusForMarket(marketId: string, status: MarketStatus): Promise<void> {
-    await this.db.updateTable('market').set({ status }).where('id', '=', marketId).execute();
+  async setStatusForMarket(marketId: string, status: MarketStatus, ex: Executor = this.db): Promise<void> {
+    await ex.updateTable('market').set({ status }).where('id', '=', marketId).execute();
+  }
+
+  /** The market's status under a row lock — placement re-checks it inside the reserve txn (D44). */
+  async statusForUpdate(ex: Executor, marketId: string): Promise<MarketStatus | undefined> {
+    const r = await ex.selectFrom('market').select('status').where('id', '=', marketId).forUpdate().executeTakeFirst();
+    return r?.status;
   }
 
   async getRunner(runnerId: string) {

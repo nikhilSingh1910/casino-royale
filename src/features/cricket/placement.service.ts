@@ -125,9 +125,10 @@ export class PlacementService {
   }
 
   /**
-   * The one money-path shared by both placement kinds (§3.2): M2 gate → full reservation via the
-   * ledger (back: stake, lay: winnings) → bet row → liability-cap auto-suspend. The deterministic
-   * reservationId keeps bet ↔ chip_reservation consistent across a crash-retry (D35).
+   * The one money-path shared by both placement kinds (§3.2): M2 gate → reserve + market re-check +
+   * bet row + liability cap, all in ONE ledger transaction (D44). The in-txn `statusForUpdate` lock
+   * serialises against settlement's suspend→drain, so a bet can't strand 'open' on a 'settled' market
+   * and two bets can't both slip under the cap; if anything throws, the reservation rolls back — no orphan.
    */
   private async reserveAndCreate(a: ReserveArgs) {
     await this.account.assertCanBet(a.userId); // M2 gate
@@ -141,32 +142,36 @@ export class PlacementService {
     if ((bal.available as bigint) < (reserved as bigint)) throw new BetRejectedError('insufficient chips');
 
     const reservationId = `bet:${a.idempotencyKey}`;
-    await this.ledger.reserve(a.userId, reservationId, reserved, a.idempotencyKey);
-
-    const bet = await this.bets.create({
-      idempotencyKey: a.idempotencyKey,
-      userId: a.userId,
-      marketId: a.marketId,
-      matchId: a.matchId,
-      reservationId,
-      side: a.side,
-      lineValue: a.lineValue,
-      runnerId: a.runnerId,
-      price: a.priceScaled,
-      stake: a.stake,
-      reserved,
-      potentialPayout,
-    });
-
-    // Liability cap → auto-suspend (XC3.6). Only when a cap is set; runner markets carry 0 = off (D37),
-    // because the binary operator-liability formula does not model a multi-runner worst case.
-    if ((a.cfg.session_threshold as bigint) > 0n) {
-      const liability = calculateOperatorLiability(await this.bets.positionsForMarket(a.marketId, POSITIONS_MAX));
-      if ((liability as bigint) > a.cfg.session_threshold) {
-        await this.markets.setStatusForMarket(a.marketId, 'suspended');
+    let created: Awaited<ReturnType<BetRepo['create']>> | undefined;
+    await this.ledger.reserve(a.userId, reservationId, reserved, a.idempotencyKey, async (trx) => {
+      if ((await this.markets.statusForUpdate(trx, a.marketId)) !== 'open') throw new BetRejectedError('market not open');
+      created = await this.bets.create(
+        {
+          idempotencyKey: a.idempotencyKey,
+          userId: a.userId,
+          marketId: a.marketId,
+          matchId: a.matchId,
+          reservationId,
+          side: a.side,
+          lineValue: a.lineValue,
+          runnerId: a.runnerId,
+          price: a.priceScaled,
+          stake: a.stake,
+          reserved,
+          potentialPayout,
+        },
+        trx,
+      );
+      // Runner markets carry threshold 0 = off (D37): the binary liability formula has no multi-runner worst case.
+      if ((a.cfg.session_threshold as bigint) > 0n) {
+        const liability = calculateOperatorLiability(await this.bets.positionsForMarket(a.marketId, POSITIONS_MAX, trx));
+        if ((liability as bigint) > a.cfg.session_threshold) await this.markets.setStatusForMarket(a.marketId, 'suspended', trx);
       }
-    }
-    return bet;
+    });
+    if (created) return created;
+    const existing = await this.bets.findByKey(a.idempotencyKey); // reserve replayed (concurrent same key) → the winner's bet
+    if (existing) return existing;
+    throw new BetRejectedError('placement could not be completed');
   }
 
   /** CLAUDE.md §5 rule 2 — the same function the risk console uses (XC3.3). */

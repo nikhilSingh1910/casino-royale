@@ -35,11 +35,17 @@ export class LedgerService {
     return this.commit(userId, idempotencyKey, 'topUp', () => L.topUp(userId, amount));
   }
 
+  /**
+   * Reserve chips, and — atomically in the same transaction — run `onReserved` (D44). Placement uses
+   * it to re-check the market and insert the bet, so a reserve can never commit without its bet: if
+   * the hook throws, the whole reservation rolls back. Callers with no follow-on work omit it.
+   */
   async reserve(
     userId: string,
     reservationId: string,
     amount: Chips,
     idempotencyKey: string,
+    onReserved?: (trx: Transaction<Database>) => Promise<void>,
   ): Promise<OpResult> {
     return this.db.transaction().execute(async (trx) => {
       await this.lock(trx, userId);
@@ -53,6 +59,7 @@ export class LedgerService {
         .insertInto('chip_reservation')
         .values({ reservation_id: reservationId, user_id: userId, amount, status: 'open' })
         .execute();
+      if (onReserved) await onReserved(trx);
       return { txnId, replayed: false };
     });
   }

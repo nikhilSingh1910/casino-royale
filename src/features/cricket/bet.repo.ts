@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
-import { BetSide, BetStatus, Database, KYSELY } from '../../db';
+import { BetSide, BetStatus, Database, Executor, KYSELY } from '../../db';
 import { chips } from '../../shared/money';
 import { BetPosition } from './exposure';
 
@@ -69,8 +69,8 @@ const toPosition = (r: PositionRow): BetPosition => ({
 export class BetRepo {
   constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
 
-  async create(b: CreateBet) {
-    return this.db
+  async create(b: CreateBet, ex: Executor = this.db) {
+    return ex
       .insertInto('bet')
       .values({
         idempotency_key: b.idempotencyKey,
@@ -98,8 +98,8 @@ export class BetRepo {
       .executeTakeFirst();
   }
 
-  async positionsForMarket(marketId: string, limit: number): Promise<BetPosition[]> {
-    const rows = await this.db
+  async positionsForMarket(marketId: string, limit: number, ex: Executor = this.db): Promise<BetPosition[]> {
+    const rows = await ex
       .selectFrom('bet')
       .select(['side', 'reserved', 'potential_payout'])
       .where('market_id', '=', marketId)

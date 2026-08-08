@@ -943,3 +943,27 @@ fixed placeholder book so cycling changes nothing visible; the recent-result str
 
 **Consequence.** Set `LIVE_TICK_MS=6000` and the app is alive: a demo match spawns, balls stream, the
 score climbs, session lines reprice and settle — all with zero clicks, all real ledger/settlement.
+
+---
+
+### D44 — Placement is one ACID transaction (audit fix G1)
+
+**Context.** The adversarial audit found placement did `ledger.reserve` (its own txn) then `bets.create`
+(a second txn), with the market-status read never re-checked under a lock. Two reachable failures, both
+invisible to `verifyIntegrity()`: a crash between the two orphaned a reservation with no bet; and a bet
+committing just after settlement's drain stranded an `open` bet on a `settled` market — chips locked
+forever. This contradicted the CLAUDE.md §4 "a bet placement is a single ACID transaction" invariant.
+
+**Decision.** `LedgerService.reserve` takes an optional `onReserved(trx)` hook that runs **inside the
+reserve transaction** (one reserve implementation, not two — §3.2/§5.1). Placement's hook re-reads the
+market `FOR UPDATE` (`MarketRepo.statusForUpdate`), rejects if not `open`, inserts the bet on the shared
+`trx`, and runs the liability-cap check there too. A shared `Executor = Kysely | Transaction` type lets
+`bets.create` / `positionsForMarket` / `setStatusForMarket` take the caller's txn. If anything throws,
+the reservation rolls back — no orphan is possible. The `FOR UPDATE` recheck serialises against
+settlement's suspend→drain (which already suspends first) and against concurrent placements, so it also
+closes the late-bet strand and the liability-cap race in one stroke.
+
+**Consequence.** Kills the orphan, the late-bet strand, and the cap race together; makes §4 literally
+true. Placements on one market now serialise on its row (correctness over throughput — fine for
+play-money). The former crash-retry "heal" is deleted as unreachable. Lock order advisory(user)→market
+row is deadlock-free. Verified: 122 tests, incl. ledger- and placement-level atomicity tests.
