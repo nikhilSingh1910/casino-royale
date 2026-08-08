@@ -5,7 +5,7 @@ import { PromoCarousel } from '../components/PromoCarousel';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 
 export function HomePage() {
-  const q = useQuery({ queryKey: ['matches'], queryFn: api.matches });
+  const q = useQuery({ queryKey: ['matches'], queryFn: api.matches, refetchInterval: 8000 });
 
   const body = q.isLoading ? (
     <div className="panel"><Loading /></div>

@@ -15,6 +15,8 @@ export const configSchema = z
     DATABASE_URL: z.string().url(),
     // Which cricket feed to run (CM1/XC1.8).
     FEED_SOURCE: z.enum(FEED_SOURCES).default('fixture'),
+    // Demo live ticker: ms between generated balls. 0 = off (default, and always off in tests).
+    LIVE_TICK_MS: z.coerce.number().int().nonnegative().default(0),
   })
   .superRefine((cfg, ctx) => {
     // `fixture` is fake recorded data — never serve it as the live feed in production (D26; under

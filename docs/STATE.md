@@ -115,6 +115,10 @@ and the decision log):
   was rebuilt. Run: backend `pnpm start:dev`, then `cd web && pnpm dev`.
 - ✅ **Login page + demo** (D42) — full-screen `/login` (Kestrel logo, username/password, Login + **Login with
   Demo ID**); the header opens it. `POST /auth/demo` mints a throwaway account funded €1,000 via the ledger.
+- ✅ **Live feed** (D43) — a gated `LiveTicker` (`LIVE_TICK_MS>0`, off in tests/prod) drips a generated
+  ball per tick to in-play matches, reprices session lines, auto-settles due windows, and self-seeds a
+  demo T20. Frontend polls, so scores + over strip + recent-result tick on their own. **Run the live demo:**
+  backend `LIVE_TICK_MS=6000 DATABASE_URL=... pnpm start:dev`, then `cd web && pnpm dev`.
 - ✅ **Ball By Ball** (D41) — a `ball_by_ball` runner market (8 next-ball outcomes: 0/1/2/3/4/6 runs, Wicket,
   Extra) reusing runner placement + `settleOutcome`; the King grid page (`/bbb/:id`) + a Recent-Result strip
   from the ball store. *Deferred:* the auto per-ball lifecycle (needs the live feed).

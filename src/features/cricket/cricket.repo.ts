@@ -31,6 +31,17 @@ export class CricketRepo {
       .executeTakeFirst();
   }
 
+  /** Matches in a given status — the live ticker's work-list, bounded (CLAUDE.md §3.3). */
+  async matchesByStatus(status: MatchStatus, limit: number) {
+    return this.db
+      .selectFrom('cricket_match')
+      .select(['match_id', 'name', 'status'])
+      .where('status', '=', status)
+      .orderBy('starts_at', 'asc')
+      .limit(limit)
+      .execute();
+  }
+
   /** Matches for the lobby, soonest first, bounded (CLAUDE.md §3.3). */
   async listMatches(limit: number) {
     return this.db

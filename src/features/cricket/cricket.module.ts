@@ -12,11 +12,12 @@ import { PlacementService } from './placement.service';
 import { SettlementService } from './settlement.service';
 import { MatchController } from './match.controller';
 import { BetController } from './bet.controller';
+import { LiveTicker } from './live-ticker.service';
 
 @Module({
   imports: [DatabaseModule, LedgerModule, IdentityModule, AuditModule],
   controllers: [MatchController, BetController],
-  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService],
+  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService, LiveTicker],
   exports: [FeedIngestService, CricketRepo, MarketService, PlacementService, SettlementService],
 })
 export class CricketModule {}

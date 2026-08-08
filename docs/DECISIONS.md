@@ -920,3 +920,26 @@ returns a session. Username stays email-based (a hint guides it); the demo path 
 **Consequence.** Instant, zero-friction play for a play-money product — the demo wallet is real ledger
 state, so every screen (balance, bets, settlement) behaves exactly as a normal account. One login
 surface (the page); the header just routes to it.
+
+---
+
+### D43 — Demo live feed: a self-running ticker (CM-web)
+
+**Context.** For a live feel, scores + the ball-by-ball recent-result should advance on their own —
+but nothing was dripping balls into the store over time (`FeedIngestService` reads a whole recorded
+stream; the score endpoint just derives from whatever balls exist).
+
+**Decision.** A `LiveTicker` service on a `setInterval`, **gated by `LIVE_TICK_MS` (default 0 = off, so it
+never runs in tests, and prod stays clean)**. Each tick: advance every in-play match by one *generated*
+ball (pure `nextBall`/`outcomeFromRoll` — weighted 0/1/2/3/4/6/W/extra), reprice session lines
+(`repriceMatch`), and auto-settle completed session windows (`settleDueMarkets`). If nothing is live it
+promotes a scheduled match, or **self-seeds a demo T20** so the demo works out of the box. The frontend
+already polls (`/score` every 5s, lists every 6–8s), so scores, the over strip, session lines and the
+recent-result all tick on their own. This is a **demo feed** (like `FixtureFeed`, D26) — it proposes raw
+balls; the platform still prices & settles. In prod `LIVE_TICK_MS=0` and a real feed adapter replaces it.
+
+**Deferred:** the ball-by-ball *market* auto-cycle (settle each ball → open the next) — the odds are a
+fixed placeholder book so cycling changes nothing visible; the recent-result strip already ticks.
+
+**Consequence.** Set `LIVE_TICK_MS=6000` and the app is alive: a demo match spawns, balls stream, the
+score climbs, session lines reprice and settle — all with zero clicks, all real ledger/settlement.

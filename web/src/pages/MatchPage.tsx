@@ -8,7 +8,7 @@ import { EmptyState, ErrorState, Loading } from '../components/States';
 
 export function MatchPage() {
   const { id = '' } = useParams();
-  const q = useQuery({ queryKey: ['match', id], queryFn: () => api.match(id), enabled: !!id });
+  const q = useQuery({ queryKey: ['match', id], queryFn: () => api.match(id), enabled: !!id, refetchInterval: 6000 });
 
   if (q.isLoading) return <div className="panel"><Loading /></div>;
   if (q.isError) {

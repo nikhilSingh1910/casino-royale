@@ -11,7 +11,7 @@ const colorFor = (name: string) => (name === '4 Runs' ? 'green' : name === '6 Ru
 export function BallByBallPage() {
   const { id = '' } = useParams();
   const { selection, select } = useSelection();
-  const mq = useQuery({ queryKey: ['match', id], queryFn: () => api.match(id), enabled: !!id });
+  const mq = useQuery({ queryKey: ['match', id], queryFn: () => api.match(id), enabled: !!id, refetchInterval: 6000 });
   const sq = useQuery({ queryKey: ['score', id], queryFn: () => api.score(id), enabled: !!id, refetchInterval: 5000 });
 
   if (mq.isLoading) return <div className="panel"><Loading /></div>;
