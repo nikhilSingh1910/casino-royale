@@ -145,8 +145,8 @@ export class BetRepo {
     return rows.map(toSettlementRow);
   }
 
-  async setStatus(betId: string, status: BetStatus): Promise<void> {
-    await this.db.updateTable('bet').set({ status }).where('id', '=', betId).execute();
+  async setStatus(betId: string, status: BetStatus, ex: Executor = this.db): Promise<void> {
+    await ex.updateTable('bet').set({ status }).where('id', '=', betId).execute();
   }
 
   /** Open positions across all a match's markets, tagged by market — one query, for match-level liability. */

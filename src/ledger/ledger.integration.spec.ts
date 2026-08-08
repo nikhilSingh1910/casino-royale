@@ -99,6 +99,42 @@ describe('LedgerService (integration, real Postgres) — M1', () => {
     await expect(ledger.settle(rid, 'won', chips(10), randomUUID())).rejects.toThrow(ReservationNotOpenError);
   });
 
+  it('settle is atomic with its onSettled hook — a throw rolls the settlement back (D44)', async () => {
+    const u = user();
+    await ledger.topUp(u, chips(100), randomUUID());
+    const rid = randomUUID();
+    await ledger.reserve(u, rid, chips(40), randomUUID());
+    await expect(
+      ledger.settle(rid, 'won', chips(20), randomUUID(), async () => {
+        throw new Error('hook failed');
+      }),
+    ).rejects.toThrow('hook failed');
+    const bal = await ledger.balance(u);
+    expect(bal.available as bigint).toBe(60n); // nothing paid — settlement rolled back
+    expect(bal.reserved as bigint).toBe(40n);
+    const resv = await db.selectFrom('chip_reservation').select('status').where('reservation_id', '=', rid).executeTakeFirst();
+    expect(resv?.status).toBe('open'); // reservation still open, resettleable
+  });
+
+  it('a replayed settle (same key) is a no-op and runs its hook only once (D44)', async () => {
+    const u = user();
+    await ledger.topUp(u, chips(100), randomUUID());
+    const rid = randomUUID();
+    await ledger.reserve(u, rid, chips(40), randomUUID());
+    const key = randomUUID();
+    let hookRuns = 0;
+    const first = await ledger.settle(rid, 'won', chips(30), key, async () => {
+      hookRuns += 1;
+    });
+    const second = await ledger.settle(rid, 'lost', chips(0), key, async () => {
+      hookRuns += 1;
+    });
+    expect(second.replayed).toBe(true);
+    expect(second.txnId).toBe(first.txnId);
+    expect(hookRuns).toBe(1); // the losing drain's hook never ran — no status overwrite
+    expect((await ledger.balance(u)).available as bigint).toBe(130n); // first outcome (won), not lost
+  });
+
   it('serialises concurrent reserves — only what the balance allows succeeds', async () => {
     const u = user();
     await ledger.topUp(u, chips(100), randomUUID());

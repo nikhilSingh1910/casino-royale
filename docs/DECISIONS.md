@@ -967,3 +967,37 @@ closes the late-bet strand and the liability-cap race in one stroke.
 true. Placements on one market now serialise on its row (correctness over throughput — fine for
 play-money). The former crash-retry "heal" is deleted as unreachable. Lock order advisory(user)→market
 row is deadlock-free. Verified: 122 tests, incl. ledger- and placement-level atomicity tests.
+
+---
+
+### D45 — Reinstate a durable job queue (pg-boss). Supersedes D33's trim.
+
+**Context.** The audit found settlement runs and four-eyes overrides execute inline in requests/ticks —
+multi-step and not crash-safe. CLAUDE.md §4 ("slow work goes in a table, drained by a worker") and §7
+("jobs/ settlement job queue (pg-boss)") always specified this; D33 only deferred it for play-money.
+
+**Decision.** Introduce **pg-boss** (Postgres-backed — fits the single store, D33). Settlement-due,
+match-settlement, and approved overrides become **job rows** drained by a worker with attempts/backoff/
+dead-letter. Per-market settlement is a **singleton job** (one per market key) so two drains can never
+run at once — this is where settlement serialises, architecturally. Handlers wrap the existing
+`SettlementService`/`TradingService` methods unchanged; only the *trigger* becomes durable. The worker
+is config-gated so tests/CI drive it deterministically.
+
+**Consequence.** Closes C1 (four-eyes crash-safety — the override is a retryable job) and the
+concurrent-drain race (P3) at the orchestration level. Re-adds the subsystem the bible always named.
+
+---
+
+### D46 — Full-match demo ticker + automatic runner settlement. Extends D43.
+
+**Context.** `settleMatchResult`/`settleOutcome` had no runtime caller (audit P2); the demo ticker
+played one innings, so match-odds/bookmaker had no authoritative winner and their bets could never settle.
+
+**Decision.** Extend the ticker to model a **complete match** — innings 1, a target, the chase, and a
+**derived winner** — settling the **ball_by_ball** market each delivery (`settleOutcome`, then open the
+next) and the **match_odds/bookmaker** markets at match end (`settleMatchResult` from the derived winner),
+enqueued through the D45 queue. Every market type then settles automatically from the append-only ball
+store ("the feed proposes, the platform disposes"). Still demo-gated by `LIVE_TICK_MS`; a real feed
+adapter replaces the generator in prod.
+
+**Consequence.** Closes P2 — the core loop (wager → settle → ledger) completes for all four market types.

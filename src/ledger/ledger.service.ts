@@ -64,11 +64,17 @@ export class LedgerService {
     });
   }
 
+  /**
+   * Settle a reservation, and — atomically in the same transaction — run `onSettled` (D44). Settlement
+   * uses it to stamp the bet's status alongside the money move; on a replayed settle (a concurrent drain
+   * won the race) the hook does NOT run, so a losing drain can never overwrite the bet's status.
+   */
   async settle(
     reservationId: string,
     outcome: SettleOutcome,
     winnings: Chips,
     idempotencyKey: string,
+    onSettled?: (trx: Transaction<Database>) => Promise<void>,
   ): Promise<OpResult> {
     return this.db.transaction().execute(async (trx) => {
       const resv = await trx
@@ -94,6 +100,7 @@ export class LedgerService {
         .set({ status: outcome === 'void' ? 'released' : 'settled', closed_at: new Date() })
         .where('reservation_id', '=', reservationId)
         .execute();
+      if (onSettled) await onSettled(trx);
       return { txnId, replayed: false };
     });
   }
@@ -110,6 +117,7 @@ export class LedgerService {
     newOutcome: SettleOutcome,
     winnings: Chips,
     idempotencyKey: string,
+    onResettled?: (trx: Transaction<Database>) => Promise<void>,
   ): Promise<OpResult> {
     return this.db.transaction().execute(async (trx) => {
       const resv = await trx
@@ -139,6 +147,7 @@ export class LedgerService {
           .where('reservation_id', '=', reservationId)
           .execute();
       }
+      if (onResettled) await onResettled(trx);
       return { txnId, replayed: false };
     });
   }

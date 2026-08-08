@@ -178,8 +178,9 @@ export class SettlementService {
       const to = resolveFancyBet(bet.side, bet.lineValue, runs);
       if (to === from) continue;
       const win = chips(bet.potentialPayout);
-      await this.ledger.resettle(bet.reservationId, from, to, win, `resettle:${bet.id}:${correctionId}`);
-      await this.bets.setStatus(bet.id, to);
+      await this.ledger.resettle(bet.reservationId, from, to, win, `resettle:${bet.id}:${correctionId}`, (trx) =>
+        this.bets.setStatus(bet.id, to, trx),
+      );
       corrected.push({ betId: bet.id, from, to });
     }
     await this.audit.record({
@@ -204,9 +205,12 @@ export class SettlementService {
       for (const bet of batch) {
         const outcome = outcomeOf(bet);
         const win: Chips = outcome === 'won' ? chips(bet.potentialPayout) : ZERO;
-        await this.ledger.settle(bet.reservationId, outcome, win, `settle:${bet.id}`);
-        await this.bets.setStatus(bet.id, outcome);
-        total += 1;
+        // Money move and bet-status stamp in ONE transaction (D44). A replayed settle means a concurrent
+        // drain already resolved this bet — its hook doesn't run, so we never overwrite the winner's outcome.
+        const { replayed } = await this.ledger.settle(bet.reservationId, outcome, win, `settle:${bet.id}`, (trx) =>
+          this.bets.setStatus(bet.id, outcome, trx),
+        );
+        if (!replayed) total += 1;
       }
     }
   }
