@@ -17,6 +17,8 @@ export const configSchema = z
     FEED_SOURCE: z.enum(FEED_SOURCES).default('fixture'),
     // Demo live ticker: ms between generated balls. 0 = off (default, and always off in tests).
     LIVE_TICK_MS: z.coerce.number().int().nonnegative().default(0),
+    // Durable job queue (pg-boss, D45). false = run enqueued work inline (tests/dev); true = worker-drained.
+    JOBS_ENABLED: z.string().default('false').transform((v) => v === 'true'),
   })
   .superRefine((cfg, ctx) => {
     // `fixture` is fake recorded data — never serve it as the live feed in production (D26; under

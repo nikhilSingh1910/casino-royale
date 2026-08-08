@@ -3,7 +3,8 @@ import { ConfigService } from '../../shared/config';
 import { CricketRepo } from './cricket.repo';
 import { inningsOver, nextBall } from './live';
 import { MarketService } from './market.service';
-import { SettlementService } from './settlement.service';
+import { JobQueue } from '../../jobs';
+import { SETTLE_DUE } from './cricket.jobs';
 
 const BALLS_MAX = 5000;
 
@@ -22,7 +23,7 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService,
     private readonly cricket: CricketRepo,
     private readonly markets: MarketService,
-    private readonly settlement: SettlementService,
+    private readonly jobs: JobQueue,
   ) {}
 
   onModuleInit(): void {
@@ -61,7 +62,7 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
         }
         await this.cricket.appendBall(nextBall(m.match_id, balls, Math.random()));
         await this.markets.repriceMatch(m.match_id);
-        await this.settlement.settleDueMarkets(m.match_id);
+        await this.jobs.send(SETTLE_DUE, { matchId: m.match_id }, { singletonKey: m.match_id });
       }
     } catch (e) {
       this.log.error(e instanceof Error ? e.message : String(e));

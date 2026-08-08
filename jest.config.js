@@ -9,4 +9,7 @@ module.exports = {
   // Integration suites share one Postgres test DB and TRUNCATE between tests, so files must not
   // run concurrently. Serial is fine at this size; split into a per-worker DB if the suite grows.
   maxWorkers: 1,
+  // pg-boss (D45) leaves a background maintenance handle its stop() doesn't clear synchronously, so
+  // force the process to exit after the run completes. Tests have all finished by then — nothing masked.
+  forceExit: true,
 };

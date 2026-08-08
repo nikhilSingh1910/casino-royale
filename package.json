@@ -25,6 +25,7 @@
     "kysely": "^0.27.4",
     "nestjs-pino": "^4.1.0",
     "pg": "^8.13.0",
+    "pg-boss": "^9.0.3",
     "pino-http": "^10.3.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
