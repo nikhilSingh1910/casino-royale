@@ -56,6 +56,20 @@ export class SettlementService {
     return this.bets.countStrandedOpenBets();
   }
 
+  /** Settle the just-bowled delivery on the ball-by-ball market, then reopen it for the next ball (D46). */
+  async settleBall(marketId: string, outcome: string): Promise<void> {
+    await this.settleOutcome(marketId, outcome, 'ticker');
+    await this.markets.setStatusForMarket(marketId, 'open');
+  }
+
+  /** Settle a completed match: runner markets from the derived winner, then void any leftover open ball market (D46). */
+  async settleMatch(matchId: string, winner: string): Promise<void> {
+    await this.settleMatchResult(matchId, winner, 'ticker');
+    const markets = await this.markets.marketsForMatch(matchId, RESETTLE_MAX);
+    const bbb = markets.find((m) => m.market_type === 'ball_by_ball');
+    if (bbb && bbb.status !== 'settled') await this.voidMarket(bbb.id, 'ticker', 'match ended');
+  }
+
   async settleFancyMarket(marketId: string): Promise<MarketSettlement> {
     const market = await this.markets.getMarketWithFancy(marketId);
     if (!market || !market.fancy) return { marketId, status: 'not-fancy', actualRuns: null, settled: 0 };

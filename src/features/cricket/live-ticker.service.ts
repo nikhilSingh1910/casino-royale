@@ -1,10 +1,11 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '../../shared/config';
 import { CricketRepo } from './cricket.repo';
-import { inningsOver, nextBall } from './live';
+import { deriveWinner, matchComplete, nextBall } from './live';
+import { ballOutcome } from './match-state';
 import { MarketService } from './market.service';
 import { JobQueue } from '../../jobs';
-import { SETTLE_DUE } from './cricket.jobs';
+import { SETTLE_BALL, SETTLE_DUE, SETTLE_MATCH } from './cricket.jobs';
 
 const BALLS_MAX = 5000;
 
@@ -56,13 +57,20 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
       }
       for (const m of live) {
         const balls = await this.cricket.ballsFor(m.match_id, BALLS_MAX);
-        if (inningsOver(balls)) {
+        if (matchComplete(balls)) {
+          const [teamFirst, teamSecond] = m.name.split(/\s+v\s+/i).map((t) => t.trim());
+          if (teamFirst && teamSecond) {
+            await this.jobs.send(SETTLE_MATCH, { matchId: m.match_id, winner: deriveWinner(balls, teamFirst, teamSecond) }, { singletonKey: m.match_id });
+          }
           await this.cricket.setStatus(m.match_id, 'closed');
           continue;
         }
-        await this.cricket.appendBall(nextBall(m.match_id, balls, Math.random()));
+        const ball = nextBall(m.match_id, balls, Math.random());
+        await this.cricket.appendBall(ball);
         await this.markets.repriceMatch(m.match_id);
         await this.jobs.send(SETTLE_DUE, { matchId: m.match_id }, { singletonKey: m.match_id });
+        const bbb = await this.markets.ballByBallMarketId(m.match_id);
+        if (bbb) await this.jobs.send(SETTLE_BALL, { marketId: bbb, outcome: ballOutcome(ball) }, { singletonKey: bbb });
       }
     } catch (e) {
       this.log.error(e instanceof Error ? e.message : String(e));

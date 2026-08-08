@@ -147,6 +147,12 @@ export class MarketService implements MarketRepricer {
     return this.repo.getMarketWithFancy(marketId);
   }
 
+  /** The match's ball-by-ball market id, or null — the ticker settles it per delivery (D46). */
+  async ballByBallMarketId(matchId: string): Promise<string | null> {
+    const markets = await this.repo.marketsForMatch(matchId, MARKETS_MAX);
+    return markets.find((m) => m.market_type === 'ball_by_ball')?.id ?? null;
+  }
+
   /** Operator lock/unlock of a single market (XC5.2). A settled market cannot be reopened. */
   async suspendMarket(marketId: string): Promise<void> {
     await this.repo.setStatusForMarket(marketId, 'suspended');
