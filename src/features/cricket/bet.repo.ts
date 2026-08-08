@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
 import { BetSide, BetStatus, Database, Executor, KYSELY } from '../../db';
 import { chips } from '../../shared/money';
-import { BetPosition } from './exposure';
+import { BetPosition, SESSION_OUTCOME } from './exposure';
 
 /** What settlement needs about a bet: how to resolve it (line or runner), what to pay, which reservation to move (D35/D37). */
 export interface SettlementRow {
@@ -58,8 +58,10 @@ interface PositionRow {
   side: BetSide;
   reserved: bigint;
   potential_payout: bigint;
+  runner_id: string | null;
 }
 const toPosition = (r: PositionRow): BetPosition => ({
+  outcome: r.runner_id ?? SESSION_OUTCOME, // a runner id, or the session line for fancy bets (audit C2)
   side: r.side,
   reserved: chips(r.reserved),
   potentialPayout: chips(r.potential_payout),
@@ -101,7 +103,7 @@ export class BetRepo {
   async positionsForMarket(marketId: string, limit: number, ex: Executor = this.db): Promise<BetPosition[]> {
     const rows = await ex
       .selectFrom('bet')
-      .select(['side', 'reserved', 'potential_payout'])
+      .select(['side', 'reserved', 'potential_payout', 'runner_id'])
       .where('market_id', '=', marketId)
       .where('status', '=', 'open')
       .limit(limit)
@@ -112,7 +114,7 @@ export class BetRepo {
   async positionsForUserMarket(userId: string, marketId: string, limit: number): Promise<BetPosition[]> {
     const rows = await this.db
       .selectFrom('bet')
-      .select(['side', 'reserved', 'potential_payout'])
+      .select(['side', 'reserved', 'potential_payout', 'runner_id'])
       .where('user_id', '=', userId)
       .where('market_id', '=', marketId)
       .where('status', '=', 'open')
@@ -165,7 +167,7 @@ export class BetRepo {
   async positionsForMatch(matchId: string, limit: number): Promise<{ marketId: string; position: BetPosition }[]> {
     const rows = await this.db
       .selectFrom('bet')
-      .select(['market_id', 'side', 'reserved', 'potential_payout'])
+      .select(['market_id', 'side', 'reserved', 'potential_payout', 'runner_id'])
       .where('match_id', '=', matchId)
       .where('status', '=', 'open')
       .limit(limit)
