@@ -23,8 +23,8 @@ export class TradingRepo {
     return this.db.selectFrom('operator_action').selectAll().where('id', '=', id).executeTakeFirst();
   }
 
-  /** Atomically claim a pending action (approve/reject). Returns the row iff it was still pending. */
-  async decide(id: string, status: 'executed' | 'rejected', approvedBy: string) {
+  /** Atomically claim a pending action (approve→approved / reject). Returns the row iff it was still pending. */
+  async decide(id: string, status: 'approved' | 'rejected', approvedBy: string) {
     return this.db
       .updateTable('operator_action')
       .set({ status, approved_by: approvedBy, decided_at: new Date() })
@@ -32,6 +32,16 @@ export class TradingRepo {
       .where('status', '=', 'pending')
       .returning('id')
       .executeTakeFirst();
+  }
+
+  /** Flip an approved action to executed once its override has run. Idempotent (only approved → executed). */
+  async markExecuted(id: string): Promise<void> {
+    await this.db
+      .updateTable('operator_action')
+      .set({ status: 'executed' })
+      .where('id', '=', id)
+      .where('status', '=', 'approved')
+      .execute();
   }
 
   async pending(limit: number) {

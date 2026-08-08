@@ -149,7 +149,7 @@ export interface BetTable {
 }
 
 export type OperatorActionKind = 'void' | 'resettle';
-export type OperatorActionStatus = 'pending' | 'executed' | 'rejected';
+export type OperatorActionStatus = 'pending' | 'approved' | 'executed' | 'rejected';
 
 /** A dual-auth (four-eyes) back-office action: proposed by one operator, approved by another (D36). */
 export interface OperatorActionTable {

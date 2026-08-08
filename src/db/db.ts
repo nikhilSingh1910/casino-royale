@@ -172,5 +172,10 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
       created_at timestamptz NOT NULL DEFAULT now(),
       decided_at timestamptz
     );
+
+    -- Widen operator_action.status to include 'approved' (D45b — claim-then-execute). Idempotent.
+    ALTER TABLE operator_action DROP CONSTRAINT IF EXISTS operator_action_status_check;
+    ALTER TABLE operator_action DROP CONSTRAINT IF EXISTS operator_action_status_ck;
+    ALTER TABLE operator_action ADD CONSTRAINT operator_action_status_ck CHECK (status IN ('pending', 'approved', 'executed', 'rejected'));
   `.execute(db);
 }

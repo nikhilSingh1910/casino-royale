@@ -149,6 +149,20 @@ describe('trading console (integration, real Postgres) — CM5', () => {
     expect(await available(u)).toBe(1000n + profit); // now paid as a winner
   });
 
+  it('re-running an approved override is a no-op — durable retry safety (D45b)', async () => {
+    const u = await fundedUser(1000);
+    const { marketId } = await fancyMarket('t9');
+    await placeBack(u, marketId, 100);
+    const { id } = await trading.propose('void', marketId, { reason: 'rain' }, ALICE);
+    await trading.approve(id, BOB); // claims 'approved', then executes (inline)
+    expect(await available(u)).toBe(1000n);
+    expect((await db.selectFrom('operator_action').select('status').where('id', '=', id).executeTakeFirst())?.status).toBe('executed');
+
+    // A duplicate job delivery re-runs the executor — it must not void/refund a second time.
+    await trading.executeOverride(id);
+    expect(await available(u)).toBe(1000n); // still exactly the stake back, not more
+  });
+
   it('cannot approve the same action twice', async () => {
     const u = await fundedUser(1000);
     const { marketId } = await fancyMarket('t5');

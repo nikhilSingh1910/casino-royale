@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Chips } from '../../shared/money';
 import { OperatorActionKind } from '../../db';
 import { AuditService } from '../audit';
-import { Correction, MarketService, MarketSettlement, PlacementService, SettlementService } from '../cricket';
+import { MarketService, PlacementService, SettlementService } from '../cricket';
+import { JobQueue } from '../../jobs';
 import { ActionNotFoundError, ActionNotPendingError, SoDViolationError } from './errors';
 import { flagConcentration, IntegrityFlag } from './integrity';
 import { TradingRepo } from './trading.repo';
@@ -11,7 +12,10 @@ export interface ProposalParams {
   reason: string;
   correctionId?: string;
 }
-export type ApproveResult = { kind: OperatorActionKind; result: MarketSettlement | Correction[] };
+export type ApproveResult = { kind: OperatorActionKind; actionId: string };
+
+/** Durable queue name for executing an approved four-eyes override (D45b). */
+export const EXECUTE_OVERRIDE = 'execute-override';
 
 const FLAG_MAX = 1000;
 
@@ -28,6 +32,7 @@ export class TradingService {
     private readonly settlement: SettlementService,
     private readonly placement: PlacementService,
     private readonly audit: AuditService,
+    private readonly jobs: JobQueue,
   ) {}
 
   // ---- reversible market locks (single-auth) --------------------------------
@@ -75,23 +80,33 @@ export class TradingService {
     if (!action) throw new ActionNotFoundError(actionId);
     if (action.status !== 'pending') throw new ActionNotPendingError(actionId);
     if (action.proposed_by === approver) throw new SoDViolationError('approver must differ from proposer'); // D36
-    const claimed = await this.actions.decide(actionId, 'executed', approver);
+    const claimed = await this.actions.decide(actionId, 'approved', approver);
     if (!claimed) throw new ActionNotPendingError(actionId); // lost a concurrent race
-
-    const params = action.params as ProposalParams;
-    const result: MarketSettlement | Correction[] =
-      action.kind === 'void'
-        ? await this.settlement.voidMarket(action.market_id, approver, params.reason)
-        : await this.settlement.resettleFancyMarket(action.market_id, approver, params.reason, params.correctionId ?? actionId);
 
     await this.audit.record({
       actor: approver,
       action: `action.approve.${action.kind}`,
       subject: action.market_id,
       before: { proposedBy: action.proposed_by },
-      after: { actionId, result },
+      after: { actionId },
     });
-    return { kind: action.kind, result };
+    // Execute AFTER the claim, durably: the override runs in a job that marks it 'executed' only on success (D45b).
+    await this.jobs.send(EXECUTE_OVERRIDE, { actionId }, { singletonKey: actionId });
+    return { kind: action.kind, actionId };
+  }
+
+  /**
+   * Run an approved override, then mark it executed (D45b) — never before. Idempotent and retry-safe:
+   * void/resettle are no-ops once applied, and a re-delivery finds the action already 'executed' and returns.
+   */
+  async executeOverride(actionId: string): Promise<void> {
+    const action = await this.actions.findAction(actionId);
+    if (!action || action.status !== 'approved') return;
+    const params = action.params as ProposalParams;
+    const actor = action.approved_by ?? 'system';
+    if (action.kind === 'void') await this.settlement.voidMarket(action.market_id, actor, params.reason);
+    else await this.settlement.resettleFancyMarket(action.market_id, actor, params.reason, params.correctionId ?? actionId);
+    await this.actions.markExecuted(actionId);
   }
 
   async reject(actionId: string, operator: string, reason: string): Promise<void> {
