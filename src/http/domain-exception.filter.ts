@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { BetRejectedError, MatchResultError } from '../features/cricket';
 import { AuthError, NotEligibleError } from '../features/identity';
 import { ActionNotFoundError, ActionNotPendingError, SoDViolationError } from '../features/trading';
-import { ReservationNotFoundError, ReservationNotOpenError, ReservationNotSettledError } from '../ledger';
+import { LedgerError, ReservationNotFoundError, ReservationNotOpenError, ReservationNotSettledError } from '../ledger';
 
 interface Reply {
   status(code: number): Reply;
@@ -39,6 +39,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (e instanceof ActionNotPendingError || e instanceof ReservationNotOpenError || e instanceof ReservationNotSettledError) {
       return { status: 409, body: { error: 'conflict', message: e.message } };
     }
+    // A concurrent race can make the ledger reject on insufficient funds — a 409, never a leaked 500.
+    // Generic message: e.message names internal accounts, which must not reach the client.
+    if (e instanceof LedgerError) return { status: 409, body: { error: 'insufficient_funds', message: 'Insufficient funds' } };
     if (e instanceof HttpException) return { status: e.getStatus(), body: e.getResponse() };
     this.logger.error(e instanceof Error ? (e.stack ?? e.message) : String(e));
     return { status: HttpStatus.INTERNAL_SERVER_ERROR, body: { error: 'internal' } };

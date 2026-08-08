@@ -1,10 +1,14 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpException, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { AuthService, Session } from './auth.service';
+import { FixedWindowLimiter } from './rate-limit';
 import { loginDto, signupDto } from './schema';
 import { CurrentSession, SessionGuard } from './session.guard';
 
 @Controller('auth')
 export class AuthController {
+  // Demo accounts are anonymous and ledger-funded, so cap creation per process to blunt abuse (audit O3).
+  private readonly demoLimiter = new FixedWindowLimiter(30, 60_000);
+
   constructor(private readonly auth: AuthService) {}
 
   @Post('signup')
@@ -24,6 +28,9 @@ export class AuthController {
   @Post('demo')
   @HttpCode(200)
   demo(): Promise<{ token: string; userId: string }> {
+    if (!this.demoLimiter.tryAcquire(Date.now())) {
+      throw new HttpException('Too many demo sign-ups — please try again shortly.', HttpStatus.TOO_MANY_REQUESTS);
+    }
     return this.auth.demo();
   }
 

@@ -30,6 +30,10 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     const ms = Number(this.config.get('LIVE_TICK_MS')) || 0;
     if (ms <= 0) return;
+    if (this.config.get('NODE_ENV') === 'production') {
+      this.log.warn('LIVE_TICK_MS is set but the demo ticker never runs in production — it fabricates data (§3.10)');
+      return;
+    }
     this.timer = setInterval(() => void this.tick(), ms);
     this.log.log(`live ticker on — one ball every ${ms}ms`);
   }
