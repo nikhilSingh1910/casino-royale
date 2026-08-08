@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api, ApiError, type PlaceFancy, type PlaceRunner } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { estimateProfit, formatMoney, formatOdds, parseStakeToMinor } from '../lib/format';
@@ -17,11 +17,14 @@ export function OpenBets() {
   const [ok, setOk] = useState<string | null>(null);
   const stakeMinor = parseStakeToMinor(stake);
   const back = selection?.side === 'back';
+  // One idempotency key per bet intent: stable across retries of the same selection+stake (so a retry
+  // dedupes, never double-places, C4), fresh when either changes or a bet lands (onSuccess clears stake).
+  const betKey = useMemo(() => crypto.randomUUID(), [selection, stake]);
 
   const place = useMutation<PlacedBetDto, Error, bigint>({
     mutationFn: (minor) => {
       if (!token || !selection) throw new ApiError(401, 'auth', 'Sign in to place a bet');
-      const common = { stake: minor.toString(), seenPrice: selection.price, idempotencyKey: crypto.randomUUID() };
+      const common = { stake: minor.toString(), seenPrice: selection.price, idempotencyKey: betKey };
       if (selection.kind === 'runner') {
         const dto: PlaceRunner = { marketId: selection.marketId, runnerId: selection.runnerId as string, side: selection.side, ...common };
         return api.placeRunnerBet(token, dto);
