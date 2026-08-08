@@ -199,3 +199,17 @@ a { color: var(--link); text-decoration: none; }
 .btn-link { background: none; border: none; color: var(--link); cursor: pointer; font-weight: 600; padding: 0; }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
 @media (max-width: 1000px) { .shell { grid-template-columns: 1fr; } .hl__colhead, .hl__row { grid-template-columns: 1fr 84px 84px 84px; } .hl__colhead span:nth-child(5) { display: none; } .hl__row > .hl__bell { display: none; } }
+
+/* login page (full-screen) */
+.loginpage { position: fixed; inset: 0; z-index: 50; background: radial-gradient(120% 85% at 50% 22%, #2f7d52 0%, #1c5236 52%, #123726 100%); display: grid; place-items: center; padding: 20px; overflow: auto; }
+.loginpage__close { position: absolute; top: 16px; right: 18px; width: 40px; height: 40px; border-radius: 8px; background: rgba(0,0,0,.35); color: #fff; border: none; font-size: 17px; cursor: pointer; }
+.loginbox { width: 100%; max-width: 380px; text-align: center; }
+.loginbox__logo { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-size: 56px; color: var(--gold); text-shadow: 2px 3px 0 rgba(0,0,0,.3); margin-bottom: 26px; line-height: 1; }
+.loginfield { position: relative; }
+.loginfield input { width: 100%; border: none; border-radius: 6px; padding: 14px 44px 14px 14px; font-size: 15px; color: var(--ink); }
+.loginfield input:focus { outline: 2px solid var(--gold); }
+.loginfield__icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
+.loginhint { color: #ffd7d0; font-size: 12.5px; text-align: left; margin: 4px 2px 12px; min-height: 15px; }
+.loginbtn { width: 100%; border: none; border-radius: 6px; padding: 14px; font-weight: 800; font-size: 15px; color: #fff; cursor: pointer; margin-top: 10px; background: linear-gradient(180deg, #2e7d4f, #17512f); box-shadow: 0 4px 10px rgba(0,0,0,.25); }
+.loginbtn:hover { filter: brightness(1.08); }
+.loginbtn:disabled { opacity: .6; cursor: not-allowed; }

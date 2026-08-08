@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { LedgerService } from '../../ledger';
+import { chips } from '../../shared/money';
 import { AuditService } from '../audit';
 import { IdentityRepo } from './identity.repo';
 import { hashPassword, verifyPassword } from './password';
@@ -7,6 +9,7 @@ import { hashPassword, verifyPassword } from './password';
 export class AuthError extends Error {}
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+const DEMO_CHIPS = 100000n; // €1000 of play chips, granted through the ledger (not a fabricated balance)
 const sha256 = (v: string): string => createHash('sha256').update(v).digest('hex');
 
 export interface Session {
@@ -19,7 +22,17 @@ export class AuthService {
   constructor(
     private readonly repo: IdentityRepo,
     private readonly audit: AuditService,
+    private readonly ledger: LedgerService,
   ) {}
+
+  /** One-click demo: a throwaway account funded with play chips through the ledger. */
+  async demo(): Promise<{ token: string; userId: string }> {
+    const { userId } = await this.signup(`demo_${randomUUID()}@kestrel.play`, randomUUID().replace(/-/g, ''));
+    await this.ledger.topUp(userId, chips(DEMO_CHIPS), randomUUID());
+    const token = randomBytes(32).toString('hex');
+    await this.repo.createSession(userId, sha256(token), new Date(Date.now() + SESSION_TTL_MS));
+    return { token, userId };
+  }
 
   async signup(email: string, password: string): Promise<{ userId: string }> {
     if (await this.repo.findByEmail(email)) throw new AuthError('email already registered');

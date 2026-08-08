@@ -113,6 +113,8 @@ and the decision log):
   (No/Rate/Yes/Rate). All four UI states; float-free money (§5 rule 5); balance in € per contract §8
   (King shows raw chips — flagged). The **verified engine was ported unchanged** (D40); only the front
   was rebuilt. Run: backend `pnpm start:dev`, then `cd web && pnpm dev`.
+- ✅ **Login page + demo** (D42) — full-screen `/login` (Kestrel logo, username/password, Login + **Login with
+  Demo ID**); the header opens it. `POST /auth/demo` mints a throwaway account funded €1,000 via the ledger.
 - ✅ **Ball By Ball** (D41) — a `ball_by_ball` runner market (8 next-ball outcomes: 0/1/2/3/4/6 runs, Wicket,
   Extra) reusing runner placement + `settleOutcome`; the King grid page (`/bbb/:id`) + a Recent-Result strip
   from the ball store. *Deferred:* the auto per-ball lifecycle (needs the live feed).

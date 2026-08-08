@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Outlet, Route, Routes } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Nav } from './components/Nav';
 import { OpenBets } from './components/OpenBets';
@@ -7,11 +7,12 @@ import { SelectionProvider } from './lib/selection';
 import { BallByBallPage } from './pages/BallByBallPage';
 import { HomePage } from './pages/HomePage';
 import { InPlayPage } from './pages/InPlayPage';
+import { LoginPage } from './pages/LoginPage';
 import { MatchPage } from './pages/MatchPage';
 
-export function App() {
+function Shell() {
   return (
-    <SelectionProvider>
+    <>
       <Header />
       <Nav />
       <div className="shell">
@@ -19,17 +20,28 @@ export function App() {
           <Sidebar />
         </aside>
         <main>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/inplay" element={<InPlayPage />} />
-            <Route path="/m/:id" element={<MatchPage />} />
-            <Route path="/bbb/:id" element={<BallByBallPage />} />
-          </Routes>
+          <Outlet />
         </main>
         <aside>
           <OpenBets />
         </aside>
       </div>
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <SelectionProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<Shell />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/inplay" element={<InPlayPage />} />
+          <Route path="/m/:id" element={<MatchPage />} />
+          <Route path="/bbb/:id" element={<BallByBallPage />} />
+        </Route>
+      </Routes>
     </SelectionProvider>
   );
 }

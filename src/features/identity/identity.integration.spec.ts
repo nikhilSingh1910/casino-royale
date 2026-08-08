@@ -24,7 +24,7 @@ describe('identity (integration, real Postgres) — M2', () => {
     await migrate(db);
     ledger = new LedgerService(db);
     repo = new IdentityRepo(db);
-    auth = new AuthService(repo, new AuditService(new AuditRepo(db)));
+    auth = new AuthService(repo, new AuditService(new AuditRepo(db)), ledger);
     account = new AccountService(repo, ledger);
   });
   afterAll(async () => {
@@ -41,6 +41,12 @@ describe('identity (integration, real Postgres) — M2', () => {
     expect(loginId).toBe(userId);
     const session = await auth.validateSession(token);
     expect(session?.userId).toBe(userId);
+  });
+
+  it('demo login creates a session funded with play chips', async () => {
+    const { token, userId } = await auth.demo();
+    expect(await auth.validateSession(token)).toMatchObject({ userId });
+    expect((await ledger.balance(userId)).available as bigint).toBe(100000n); // €1000 via the ledger
   });
 
   it('rejects a wrong password and an unknown email', async () => {

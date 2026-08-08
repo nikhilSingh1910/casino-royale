@@ -49,6 +49,7 @@ export interface PlaceRunner {
 export const api = {
   signup: (email: string, password: string) => req<{ userId: string }>('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
   login: (email: string, password: string) => req<{ token: string; userId: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  demo: () => req<{ token: string; userId: string }>('/auth/demo', { method: 'POST' }),
   matches: () => req<MatchListDto[]>('/matches'),
   match: (id: string) => req<MatchViewDto>(`/matches/${id}`),
   score: (id: string) => req<ScoreDto>(`/matches/${id}/score`),

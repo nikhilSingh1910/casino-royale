@@ -21,6 +21,12 @@ export class AuthController {
     return this.auth.login(dto.email, dto.password);
   }
 
+  @Post('demo')
+  @HttpCode(200)
+  demo(): Promise<{ token: string; userId: string }> {
+    return this.auth.demo();
+  }
+
   @Post('logout')
   @HttpCode(204)
   @UseGuards(SessionGuard)

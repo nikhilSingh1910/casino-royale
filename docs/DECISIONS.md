@@ -902,3 +902,21 @@ the per-cell "size" is a static display (the market's max, matching King's numbe
 
 **Consequence.** A real, non-faked ball-by-ball page — betable and settleable — built entirely by
 reusing the runner infrastructure; only presentation + a placeholder price book are new.
+
+---
+
+### D42 — Dedicated login page + one-click funded demo (CM-web)
+
+**Context.** Kingexch365 has a full-screen `/login` page (logo, username/password, **Login with Demo
+ID**) alongside the header login.
+
+**Decision.** A full-screen `/login` route (outside the app shell via a react-router layout route) —
+Kestrel logo, username/password with validation + show/hide, **Login** and **Login with Demo ID**. The
+header's logged-out state becomes a **Login** button that opens it (no more cramped inline form).
+**Demo ID** = `POST /auth/demo`: `AuthService.demo()` creates a throwaway account and **funds it with
+€1,000 of play chips through the ledger** (a real `topUp` mint→user, not a fabricated balance), then
+returns a session. Username stays email-based (a hint guides it); the demo path needs no credentials.
+
+**Consequence.** Instant, zero-friction play for a play-money product — the demo wallet is real ledger
+state, so every screen (balance, bets, settlement) behaves exactly as a normal account. One login
+surface (the page); the header just routes to it.
