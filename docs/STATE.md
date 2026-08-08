@@ -21,9 +21,32 @@ just don't convert to money.
 
 ## Phase
 
-**Cricket play-money MVP COMPLETE — M0·M1·M2 + CM1–CM6 all DONE (100 tests green, real Postgres).**
+**Cricket play-money MVP COMPLETE + adversarial audit remediated — M0·M1·M2 + CM1–CM6 all DONE, every
+audit finding closed (138 tests green, real Postgres).**
 The full playable path works end to end: all three market groups placed, settled from their
-authoritative inputs, correct ledger balance. Next is the deferred/hardening backlog (below).
+authoritative inputs, correct ledger balance.
+
+## Adversarial audit remediation (2026-08-08, D47)
+
+A two-pass, fact-grounded adversarial audit found the **ledger primitive sound** but the reservation and
+settlement layers around it not. All findings are now **closed and tested** (suite 121 → 138):
+
+- **G1 (D44)** — placement is one ACID transaction (`onReserved` hook + row-locked market recheck): kills
+  the orphan-on-crash, the late-bet strand, and the liability-cap race.
+- **G2** — settlement is atomic per bet (`onSettled`/`onResettled` hooks + replay guard): ledger and bet
+  status can't diverge. **Integrity** — `verifyIntegrity` now catches an `open` bet on a `settled` market.
+- **D45** — pg-boss durable job queue; settlement runs + four-eyes overrides are jobs (execute-then-mark).
+- **D46** — the full-match ticker auto-settles runner + ball-by-ball markets.
+- **C2** N-outcome exposure/liability · **C3** `LedgerError`→409 (no leaked 500) · **C4** frontend
+  idempotency key is one-per-intent · **O1** `migrate()` runs at boot · **O2** the ticker never runs in
+  prod · **O3** `/auth/demo` is rate-limited.
+- **Refuted on scrutiny (not bugs):** cross-user idempotency disclosure (needs guessing a v4 UUID); a
+  resettle double-debit (the recovery path prevents it). **Deferred, not dead:** `FEED_SOURCE` (reserved
+  selector + prod tripwire, not wired to a factory); `bet_delay_seconds` (reserved column, no enforcement).
+- **Display:** money is shown in **€** (`formatMoney`); the ball-by-ball grid's `100000` is a raw
+  liquidity/volume figure (King-parity cosmetic), not a balance.
+
+Next is the deferred/hardening backlog (below).
 
 In place: `PRD.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/MILESTONES.md`,
 `docs/CRICKET-MVP.md` (**the active build**), `docs/REVIEW-FINDINGS.md`, and the decision log

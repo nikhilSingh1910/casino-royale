@@ -1001,3 +1001,42 @@ store ("the feed proposes, the platform disposes"). Still demo-gated by `LIVE_TI
 adapter replaces the generator in prod.
 
 **Consequence.** Closes P2 — the core loop (wager → settle → ledger) completes for all four market types.
+
+---
+
+### D47 — Adversarial audit remediation (G1–G2, D44–D46, C2–C4, O1–O3)
+
+**Context.** A two-pass, fact-grounded adversarial audit (53 + 47 agents, verbatim-quote-gated, double-
+verified, reconciled against a lead read of the money core) found the **ledger primitive sound** but the
+reservation and settlement layers around it not: multi-transaction money paths, an integrity checker blind
+to stranded reservations, no durable job layer (CLAUDE.md §4/§7, deferred in D33), and runner-market
+settlement that existed but was wired to no runtime trigger.
+
+**Decision & fixes** (all committed to `main`, each tested):
+- **G1 (D44)** — placement is one ACID transaction: `LedgerService.reserve` gains an `onReserved(trx)`
+  hook; placement re-reads the market `FOR UPDATE`, inserts the bet, and runs the cap check in it. Kills
+  the orphan-on-crash, the late-bet strand, and the liability-cap race in one stroke.
+- **G2** — settlement is atomic per bet: `settle`/`resettle` gain `onSettled`/`onResettled` hooks that
+  stamp bet status in the money transaction; a replayed settle skips the hook, so a losing concurrent
+  drain can't overwrite the winner. **Integrity** — `verifyIntegrity` now flags an `open` bet on a
+  `settled` market (the class the old checker was blind to).
+- **D45** — pg-boss durable job queue (CJS v9; ESM v12 won't load under ts-jest). Settlement runs and
+  four-eyes overrides become per-key-singleton jobs; `approve()` claims `approved`, enqueues, and the job
+  executes **then** marks `executed` (closes the approve-before-execute gap). Inline fallback keeps tests
+  deterministic.
+- **D46** — the full-match ticker (2 innings + chase + derived winner) auto-settles ball-by-ball each
+  delivery and match-odds/bookmaker at match end, via the queue.
+- **C2** exposure/liability are N-outcome, not binary · **C3** `LedgerError`→409 with a generic message
+  (no leaked 500, no internal account names) · **C4** frontend idempotency key is one-per-bet-intent ·
+  **O1** `migrate()` runs at boot · **O2** the ticker refuses to run in `production` · **O3** a
+  `FixedWindowLimiter` caps `/auth/demo`.
+
+**Refuted on scrutiny (NOT bugs).** Cross-user idempotency-key disclosure (needs guessing a v4 UUID —
+unreachable); a resettle double-debit (the wired recovery path prevents the alleged re-proposal race).
+
+**Deferred, not dead.** `FEED_SOURCE` — a config key + prod tripwire, reserved for the feed selector but
+not yet consuming a factory (only `FixtureFeed` exists). `bet_delay_seconds` — a reserved column with no
+enforcement (timed bet delay is a future feature).
+
+**Consequence.** Every structural finding is closed; the money core's lifecycle now matches its algebra,
+and `verifyIntegrity` can see the failure class that used to be invisible. Suite 121 → 138 tests.

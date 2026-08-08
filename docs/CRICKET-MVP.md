@@ -298,8 +298,14 @@ fine under D32) · `XC1.9` recorded-fixture replay source for CI.
 > stream → append-only `raw_ball_event` (idempotent by `match_id, sequence`); **feed-down → match
 > suspended, zero fabricated balls**; score **replays purely from the raw store** (order-independent,
 > proven by property test); config **refuses `fixture` in prod**. **Deferred:** the live cricbuzz/HTTP
-> adapter (a stub behind the same interface — not testable here: network + token-gated); a richer
-> scorecard; "bets refused on a suspended match" is enforced at placement in **CM3**.
+> adapter; a richer scorecard.
+>
+> **Audit correction (2026-08-08, D47):** two claims above were over-stated. (1) Placement enforces on a
+> **market's** own `status`, not the match's — the repricer propagates a match suspension to its markets,
+> so bets are refused only once a reprice runs, not the instant the match row flips. (2) `FEED_SOURCE` is a
+> config key + prod tripwire but is **not wired to a feed factory** (only `FixtureFeed` exists; there is no
+> cricbuzz adapter or stub yet). The demo data source is now the prod-guarded `LIVE_TICKER` (audit O2); the
+> live feed adapter and a wired `FEED_SOURCE` selector remain deferred.
 
 ### ✅ CM2 — Markets priced and repricing live · **L** — DONE 2026-08-04
 > **Proof:** a match shows all three groups; session lines reprice on every ball from the feed; a
