@@ -51,6 +51,11 @@ export class SettlementService {
     return out;
   }
 
+  /** Game-integrity guard (audit): bets stranded 'open' on a 'settled' market — always 0 since D44. */
+  async strandedBetCount(): Promise<number> {
+    return this.bets.countStrandedOpenBets();
+  }
+
   async settleFancyMarket(marketId: string): Promise<MarketSettlement> {
     const market = await this.markets.getMarketWithFancy(marketId);
     if (!market || !market.fancy) return { marketId, status: 'not-fancy', actualRuns: null, settled: 0 };

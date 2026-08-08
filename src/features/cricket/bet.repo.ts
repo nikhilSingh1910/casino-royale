@@ -149,6 +149,18 @@ export class BetRepo {
     await ex.updateTable('bet').set({ status }).where('id', '=', betId).execute();
   }
 
+  /** Integrity guard (audit): bets left 'open' on a 'settled' market — D44 makes this 0; this catches a regression. */
+  async countStrandedOpenBets(): Promise<number> {
+    const r = await this.db
+      .selectFrom('bet as b')
+      .innerJoin('market as m', 'm.id', 'b.market_id')
+      .select(sql<string>`count(*)`.as('n'))
+      .where('b.status', '=', 'open')
+      .where('m.status', '=', 'settled')
+      .executeTakeFirst();
+    return Number(r?.n ?? '0');
+  }
+
   /** Open positions across all a match's markets, tagged by market — one query, for match-level liability. */
   async positionsForMatch(matchId: string, limit: number): Promise<{ marketId: string; position: BetPosition }[]> {
     const rows = await this.db

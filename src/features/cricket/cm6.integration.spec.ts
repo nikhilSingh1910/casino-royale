@@ -103,6 +103,7 @@ describe('cricket end-to-end (integration, real Postgres) — CM6', () => {
     const r = await ledger.verifyIntegrity();
     expect(r.sumsToZero).toBe(true);
     expect(r.reservedMatchesOpenReservations).toBe(true);
+    expect(await settlement.strandedBetCount()).toBe(0); // no bet left open on a settled market (D44 guard)
   };
   const findMarket = (ms: MarketRef[], type: string) => ms.find((m) => m.type === type)?.id ?? '';
 

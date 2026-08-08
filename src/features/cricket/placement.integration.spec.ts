@@ -121,6 +121,16 @@ describe('bet placement (integration, real Postgres) — CM3', () => {
     expect((await ledger.verifyIntegrity()).reservedMatchesOpenReservations).toBe(true);
   });
 
+  it('the integrity guard detects a bet stranded open on a settled market (D44)', async () => {
+    const u = await fundedUser(1000);
+    const { marketId, line, backPrice } = await fancyMarket('m9');
+    await placement.placeBet({ userId: u, marketId, side: 'back', stake: chips(100), seenLineValue: line, seenPrice: backPrice, idempotencyKey: randomUUID() });
+    expect(await betRepo.countStrandedOpenBets()).toBe(0);
+    // simulate the pre-D44 strand: the market is settled while a bet is still open
+    await marketRepo.setStatusForMarket(marketId, 'settled');
+    expect(await betRepo.countStrandedOpenBets()).toBe(1);
+  });
+
   it('auto-suspends a market that breaches its liability cap', async () => {
     const u = await fundedUser(200000);
     const { marketId, line, backPrice } = await fancyMarket('m6');
