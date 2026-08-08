@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
+import { CricketBall } from '../components/CricketArt';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { formatOdds } from '../lib/format';
 import { useSelection } from '../lib/selection';
@@ -26,9 +27,13 @@ export function BallByBallPage() {
   return (
     <div>
       <div className="bbb-promo">
-        BET ON
-        <br />
-        RUNS, WICKETS &amp; EXTRAS
+        <div>
+          <h2>
+            Every Ball, <span className="g">Every Outcome</span>
+          </h2>
+          <p>Back the next delivery — runs, wickets &amp; extras.</p>
+        </div>
+        <CricketBall className="bbb-promo__art" />
       </div>
       <div className="bbb-bar">
         <span>Runs ⓘ</span>
