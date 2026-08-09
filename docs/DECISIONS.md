@@ -1040,3 +1040,33 @@ enforcement (timed bet delay is a future feature).
 
 **Consequence.** Every structural finding is closed; the money core's lifecycle now matches its algebra,
 and `verifyIntegrity` can see the failure class that used to be invisible. Suite 121 → 138 tests.
+
+---
+
+### D48 — Cricket-first, sport-additive architecture (bible §4 invariant)
+
+**Context.** Scope stays **cricket-only** for now, but a second sport must slot in without a rewrite
+(CLAUDE.md §3.5). Verified the current seam by grep, not assertion:
+
+- **The money spine is sport-agnostic.** `ledger/`, `shared/money`, `shared/odds`, `features/identity`,
+  `features/trading` guards, and `jobs/` contain **zero** cricket terms (only two code *comments*
+  mention cricket). They operate on users, markets, runners, bets and reservations — never on innings,
+  balls or wickets. This is the expensive, valuable part, and it is already sport-neutral.
+- **Cricket logic is isolated** in `features/cricket/` + `integrations/feed/`: feed adapter, event store,
+  ball→score fold, market creation, pricing, settlement resolvers, live ticker.
+
+**Decision.** Cricket is **sport #1, a self-contained feature module** plugging into the sport-agnostic
+spine. Adding sport #2 = a sibling `features/<sport>/` + its feed adapter, with **zero spine changes**.
+**Do not build a sport-registry abstraction now** — one sport is premature (§3.6 / §3.8, refactor-at-three).
+Codified as a §4 invariant ("A sport is a module, not a fork").
+
+**Known coupling to resolve at sport #2 — not before, and not to be deepened meanwhile:**
+1. `trading.service` / `trading.module` import cricket's `MarketService`/`PlacementService`/
+   `SettlementService` directly → a sport-agnostic settlement/exposure **port** each sport registers.
+2. `http/domain-exception.filter` imports cricket errors (`BetRejectedError`, `MatchResultError`) → a
+   shared domain-error→HTTP **registry**.
+3. Cricket-named schema (`cricket_match`, `raw_ball_event`, `fancy_market`, `bet.line_value`) + the
+   `market_type` CHECK → a generic `event` + per-sport event store; market types stay additive.
+
+**Consequence.** The plug-and-play claim is honest: the sport-neutral spine is done; the residual coupling
+is shallow, enumerated, and gated to sport #2. New work must not deepen it.

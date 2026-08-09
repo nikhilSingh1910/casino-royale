@@ -333,6 +333,18 @@ KYC timing and reporting obligations are all per-jurisdiction config resolved th
 the stress test for this: if the DE ruleset can't be expressed as config, the config model is
 wrong.)
 
+**A sport is a module, not a fork.** Cricket is sport #1 and the only sport in scope now, but a
+second sport must slot in without a rewrite (§3.5). The money spine — ledger, reservation, placement
+and settlement *mechanics*, identity, authorization, jobs, money/odds — is **sport-agnostic**: it knows
+markets, runners, bets and reservations, never cricket, and stays that way. A sport is a self-contained
+feature module (`features/<sport>/` plus its feed adapter under `integrations/`) supplying the feed,
+event store, market creation, pricing and settlement *resolvers*. **Do not build the sport registry for
+one sport** (§3.6 / §3.8 — extract at sport #2, not before). Three coupling points are the known
+extraction seam, to be resolved when #2 arrives and **not deepened meanwhile:** `trading` importing
+cricket's services directly (→ a sport-agnostic settlement/exposure port), the HTTP filter mapping
+cricket's errors (→ a shared error registry), and the cricket-named tables `cricket_match` /
+`raw_ball_event` / `fancy_market` (→ a generic `event` + per-sport store). See `docs/DECISIONS.md` D48.
+
 **Slow work goes in a table, not a request.** Settlement runs, payout approvals, KYC escalations,
 reconciliation, regulatory exports — job rows drained by a worker, with attempts, backoff and a
 dead-letter state.

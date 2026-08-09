@@ -26,6 +26,15 @@ audit finding closed (138 tests green, real Postgres).**
 The full playable path works end to end: all three market groups placed, settled from their
 authoritative inputs, correct ledger balance.
 
+## Scope: cricket-first, sport-additive (D48)
+
+Cricket-only for now, but the **money spine is sport-agnostic** (ledger, reservation, placement/
+settlement mechanics, identity, trading guards, jobs — verified: no cricket terms). A sport is a
+self-contained `features/<sport>/` module + feed adapter; sport #2 slots in with **zero spine
+changes**. The registry abstraction is deliberately **not** built for one sport (§3.6). Known
+extraction seam (resolve at #2): `trading`→cricket imports, the HTTP error filter, cricket-named
+schema tables. Codified as CLAUDE.md §4 "A sport is a module, not a fork".
+
 ## Adversarial audit remediation (2026-08-08, D47)
 
 A two-pass, fact-grounded adversarial audit found the **ledger primitive sound** but the reservation and
