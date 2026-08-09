@@ -1070,3 +1070,30 @@ Codified as a §4 invariant ("A sport is a module, not a fork").
 
 **Consequence.** The plug-and-play claim is honest: the sport-neutral spine is done; the residual coupling
 is shallow, enumerated, and gated to sport #2. New work must not deepen it.
+
+---
+
+### D49 — Phase 2: deepen the play-money cricket product (PC1–PC5)
+
+**Context.** The cricket play-money MVP + adversarial-audit remediation are complete; the gap analysis
+against a full "diamond exchange" shows the remaining work is product **surface**, not the money core.
+Client direction (2026-08-09): **stay play-money (D32) and deepen the cricket product** — **no** real-money
+compliance stack (KYC/RG/payments), casino gated as an optional second engine. First milestone: **PC1**.
+
+**Decision — the Phase-2 build sequence (each runs the §2 loop):**
+- **PC1 — Account & Bet History UI.** My Account, bet history (open/settled) + **P&L**, statement,
+  change-password, proper signup. Backend read-only: a new **bounded** bets-for-user query; **P&L is
+  derived from each bet's settled outcome, never stored** (§3.10).
+- **PC2 — Chip economy.** Daily bonus / low-balance top-up; ledger **mint → user**, idempotent per day.
+- **PC3 — Operator console UI + real-match result declaration.** `/admin` over the trading backend +
+  a four-eyes `settle_match` action so real matches settle.
+- **PC4 — Live push.** SSE (in-process) for prices/scores/ball-by-ball; Postgres `NOTIFY` at scale.
+- **PC5 — Engagement.** Bonus/promotions, referrals, leaderboard.
+- **Gated (not now):** PC6 casino (second engine); **Track B** real-money pivot (PRD §10/§11).
+
+**Constraints.** Reuse the hardened spine (ledger, four-eyes, `BetRepo`, `format.ts`); honour the
+single-owner rules and the sport-additive invariant (D48 — cricket bet-history becomes a spine concern
+at sport #2; don't deepen the coupling now).
+
+**Consequence.** A clear, play-money-scoped build sequence; the licensed endgoal (bible §0) is explicitly
+deferred, not abandoned.

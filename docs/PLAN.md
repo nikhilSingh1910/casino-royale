@@ -206,3 +206,29 @@ Carried from `PRD.md` Appendix A.2 — the components that look small and are no
 Slippage on any of these will otherwise read as engineering delay: licence grant · odds feed
 contract · casino aggregator contract · PSP underwriting · market-maker agreement · lab
 certification scheduling.
+
+---
+
+## Phase 2 — Play-money product completeness (D49, 2026-08-09)
+
+The cricket money core is done + audit-hardened (D44–D47); the spine is sport-agnostic (D48). Direction:
+**stay play-money (D32), deepen the cricket product.** Real-money compliance (Track B, PRD §10/§11) and
+casino (second engine) are **gated**, not scheduled. Build order, each proof-gated under the §2 loop:
+
+| # | Milestone | Turns it into | Money | Size |
+|---|---|---|---|---|
+| **PC1** | Account & Bet History UI | a product you can *review* | read-only | M |
+| **PC2** | Chip economy (daily bonus / top-up) | a product you can *keep playing* | mint→user | S–M |
+| **PC3** | Operator console + real-match result declaration | a product you can *run* | settlement | L |
+| **PC4** | Live push (SSE) | a product that *feels live* | none | M–L |
+| **PC5** | Engagement (bonus/promotions, referrals, leaderboard) | an *acquisition* engine | yes | M |
+
+### PC1 — Account & Bet History (detailed)
+- **Backend:** `BetRepo.betsForUser(userId, limit)` — bounded, joined to market/match for display; a thin
+  `BetHistoryService` derives per-bet **P&L** (won → +winnings, lost → −reserved, void → 0; open → pending)
+  and a settled-net summary — **derived from each bet's outcome, reconciles with the ledger, never stored**.
+  `GET /me/bets` in the cricket feature (session-auth, userId from session, money as integer-minor strings).
+- **Frontend:** a `/account` area (tabs: Open Bets · Settled + P&L · Statement · Settings), change-password,
+  proper signup; "My Account" in the header. Reuse `api`/`auth`/`format`/theme. All four states designed.
+- **Tests:** bets-for-user bounded + P&L correct for won/lost/void; a bet-history render test.
+- **D48:** bet-history reads cricket markets today; it becomes a spine concern at sport #2 — coupling not deepened.
