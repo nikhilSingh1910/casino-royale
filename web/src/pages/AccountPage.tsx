@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { EmptyState, ErrorState, Loading } from '../components/States';
@@ -18,6 +18,7 @@ export function AccountPage() {
 
   return (
     <div>
+      <BonusCard token={token} />
       <div className="panel" style={{ marginBottom: 10 }}>
         <div className="panel__bar">My Account</div>
         <div className="tabs" style={{ padding: '8px 8px 0' }}>
@@ -31,6 +32,41 @@ export function AccountPage() {
       {tab === 'bets' && <BetsTab token={token} />}
       {tab === 'statement' && <StatementTab token={token} />}
       {tab === 'settings' && <SettingsTab token={token} onLogout={() => { signOut(); navigate('/'); }} />}
+    </div>
+  );
+}
+
+function BonusCard({ token }: { token: string }) {
+  const qc = useQueryClient();
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const claim = useMutation({
+    mutationFn: () => api.claimBonus(token),
+    onSuccess: (r) => {
+      if (r.claimed) {
+        setMsg({ ok: true, text: '✓ €500 added to your balance' });
+        void qc.invalidateQueries({ queryKey: ['balance'] });
+        void qc.invalidateQueries({ queryKey: ['statement'] });
+        void qc.invalidateQueries({ queryKey: ['myBets'] });
+      } else {
+        setMsg({ ok: false, text: `Already claimed today — next bonus ${new Date(r.nextClaimAt).toLocaleString()}` });
+      }
+    },
+  });
+  const err = claim.error instanceof ApiError ? claim.error.message : claim.error ? 'Could not claim the bonus.' : null;
+  const note = err ?? msg?.text;
+
+  return (
+    <div className="bonus-card">
+      <div>
+        <div className="bonus-card__title">Daily Bonus</div>
+        <div className="bonus-card__sub">Claim €500 of free play chips — once a day.</div>
+      </div>
+      <div className="bonus-card__action">
+        <button className="btn btn--green" onClick={() => claim.mutate()} disabled={claim.isPending}>
+          {claim.isPending ? '…' : 'Claim €500'}
+        </button>
+        {note && <div className={`bonus-card__msg ${err || (msg && !msg.ok) ? 'is-muted' : 'is-ok'}`}>{note}</div>}
+      </div>
     </div>
   );
 }

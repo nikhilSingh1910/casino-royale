@@ -31,8 +31,9 @@ export interface StatementRow {
 export class LedgerService {
   constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
 
-  async topUp(userId: string, amount: Chips, idempotencyKey: string): Promise<OpResult> {
-    return this.commit(userId, idempotencyKey, 'topUp', () => L.topUp(userId, amount));
+  /** Grant chips (free / daily bonus / etc.): mint → user. `kind` tags the movement for the audit trail. */
+  async topUp(userId: string, amount: Chips, idempotencyKey: string, kind = 'topUp'): Promise<OpResult> {
+    return this.commit(userId, idempotencyKey, kind, () => L.topUp(userId, amount));
   }
 
   /**

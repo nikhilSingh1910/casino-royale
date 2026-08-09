@@ -93,6 +93,20 @@ describe('identity (integration, real Postgres) — M2', () => {
     await expect(account.assertCanBet(userId)).resolves.toBeUndefined();
   });
 
+  it('the daily bonus mints once per UTC day and is idempotent (PC2)', async () => {
+    const { userId } = await auth.signup(email(), 'pw pw pw');
+    const before = (await ledger.balance(userId)).available as bigint;
+
+    const first = await account.claimDailyBonus(userId);
+    expect(first.claimed).toBe(true);
+    expect(first.available as bigint).toBe(before + 50000n); // €500 minted
+
+    const second = await account.claimDailyBonus(userId);
+    expect(second.claimed).toBe(false); // already claimed today
+    expect(second.available as bigint).toBe(first.available as bigint); // no second mint
+    expect((await ledger.verifyIntegrity()).sumsToZero).toBe(true);
+  });
+
   it('balance and statement reflect the ledger (parity account surface)', async () => {
     const { userId } = await auth.signup(email(), 'pw pw pw');
     await ledger.topUp(userId, chips(1000), randomUUID());

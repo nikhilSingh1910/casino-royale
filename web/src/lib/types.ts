@@ -82,6 +82,12 @@ export interface MeDto {
   status: string;
   role: string;
 }
+export interface BonusClaimDto {
+  claimed: boolean;
+  available: string;
+  reserved: string;
+  nextClaimAt: string;
+}
 export interface StatementRowDto {
   account: string;
   amount: string;

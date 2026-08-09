@@ -232,3 +232,12 @@ a { color: var(--link); text-decoration: none; }
 .sbadge--void { background: #e6ebe8; color: var(--muted); }
 .acct-me { display: flex; gap: 28px; padding: 4px 0 14px; }
 .acct-h { margin: 8px 0 12px; font-size: 15px; }
+
+/* daily bonus card (PC2) */
+.bonus-card { background: linear-gradient(115deg, #10431f 0%, #1c6236 55%, #2f8f50 100%); color: #fff; border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,.16); }
+.bonus-card__title { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-size: 24px; color: var(--gold); line-height: 1; }
+.bonus-card__sub { font-size: 13px; opacity: .92; margin-top: 3px; }
+.bonus-card__action { text-align: right; }
+.bonus-card__msg { font-size: 12px; margin-top: 6px; }
+.bonus-card__msg.is-ok { color: #cdebd6; }
+.bonus-card__msg.is-muted { color: #ffe0b0; }

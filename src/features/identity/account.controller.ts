@@ -29,6 +29,13 @@ export class AccountController {
     return rows.map((r) => ({ account: r.account, amount: r.amount.toString(), kind: r.kind, at: r.at }));
   }
 
+  @Post('bonus/claim')
+  @HttpCode(200)
+  async claimBonus(@CurrentSession() s: Session): Promise<{ claimed: boolean; available: string; reserved: string; nextClaimAt: string }> {
+    const r = await this.account.claimDailyBonus(s.userId);
+    return { claimed: r.claimed, available: r.available.toString(), reserved: r.reserved.toString(), nextClaimAt: r.nextClaimAt.toISOString() };
+  }
+
   @Post('change-password')
   @HttpCode(204)
   async changePassword(@CurrentSession() s: Session, @Body() body: unknown): Promise<void> {
