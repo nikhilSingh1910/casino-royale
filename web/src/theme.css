@@ -213,3 +213,22 @@ a { color: var(--link); text-decoration: none; }
 .loginbtn { width: 100%; border: none; border-radius: 6px; padding: 14px; font-weight: 800; font-size: 15px; color: #fff; cursor: pointer; margin-top: 10px; background: linear-gradient(180deg, #2e7d4f, #17512f); box-shadow: 0 4px 10px rgba(0,0,0,.25); }
 .loginbtn:hover { filter: brightness(1.08); }
 .loginbtn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* account page (PC1) */
+.num { font-variant-numeric: tabular-nums; }
+.acct-filter { display: flex; gap: 8px; padding: 12px; }
+.chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.acct-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.acct-table th { text-align: left; padding: 9px 12px; background: var(--nav); color: #fff; font-weight: 700; white-space: nowrap; }
+.acct-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.acct-table tr:last-child td { border-bottom: 0; }
+.acct-sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.pnl-pos { color: var(--green); font-weight: 700; }
+.pnl-neg { color: var(--live); font-weight: 700; }
+.sbadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+.sbadge--open { background: var(--back-2); color: var(--bm); }
+.sbadge--won { background: #d9f0e0; color: #1a6b3a; }
+.sbadge--lost { background: #f7dce3; color: #a01f3c; }
+.sbadge--void { background: #e6ebe8; color: var(--muted); }
+.acct-me { display: flex; gap: 28px; padding: 4px 0 14px; }
+.acct-h { margin: 8px 0 12px; font-size: 15px; }

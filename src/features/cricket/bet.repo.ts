@@ -67,6 +67,23 @@ const toPosition = (r: PositionRow): BetPosition => ({
   potentialPayout: chips(r.potential_payout),
 });
 
+/** A bet joined to its match/market context for the account view (PC1). */
+export interface BetHistoryRow {
+  id: string;
+  side: BetSide;
+  lineValue: number | null;
+  runnerName: string | null;
+  price: bigint;
+  stake: bigint;
+  reserved: bigint;
+  potentialPayout: bigint;
+  status: BetStatus;
+  placedAt: Date;
+  matchName: string;
+  marketName: string;
+  marketType: string;
+}
+
 @Injectable()
 export class BetRepo {
   constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
@@ -187,5 +204,48 @@ export class BetRepo {
       .limit(limit)
       .execute();
     return rows.map((r) => ({ userId: r.user_id, stake: BigInt(r.stake) }));
+  }
+
+  /** A user's bets, newest first, joined to match/market for the account view (PC1). Bounded (§3.3). */
+  async betsForUser(userId: string, limit: number): Promise<BetHistoryRow[]> {
+    const rows = await this.db
+      .selectFrom('bet as b')
+      .innerJoin('market as m', 'm.id', 'b.market_id')
+      .innerJoin('cricket_match as c', 'c.match_id', 'b.match_id')
+      .leftJoin('market_runner as r', 'r.id', 'b.runner_id')
+      .select([
+        'b.id',
+        'b.side',
+        'b.line_value',
+        'b.price',
+        'b.stake',
+        'b.reserved',
+        'b.potential_payout',
+        'b.status',
+        'b.placed_at',
+        'm.name as market_name',
+        'm.market_type',
+        'c.name as match_name',
+        'r.runner_name',
+      ])
+      .where('b.user_id', '=', userId)
+      .orderBy('b.placed_at', 'desc')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({
+      id: r.id,
+      side: r.side,
+      lineValue: r.line_value,
+      runnerName: r.runner_name,
+      price: r.price,
+      stake: r.stake,
+      reserved: r.reserved,
+      potentialPayout: r.potential_payout,
+      status: r.status,
+      placedAt: r.placed_at,
+      matchName: r.match_name,
+      marketName: r.market_name,
+      marketType: r.market_type,
+    }));
   }
 }

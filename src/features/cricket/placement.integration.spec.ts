@@ -131,6 +131,17 @@ describe('bet placement (integration, real Postgres) — CM3', () => {
     expect(await betRepo.countStrandedOpenBets()).toBe(1);
   });
 
+  it("lists a user's bets with match/market context for the account view (PC1)", async () => {
+    const u = await fundedUser(1000);
+    const { marketId, line, backPrice } = await fancyMarket('h1');
+    await placement.placeBet({ userId: u, marketId, side: 'back', stake: chips(100), seenLineValue: line, seenPrice: backPrice, idempotencyKey: randomUUID() });
+    const rows = await betRepo.betsForUser(u, 50);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ matchName: 'A v B', marketName: '6 over runs', marketType: 'fancy', side: 'back', status: 'open', runnerName: null });
+    expect(rows[0]?.stake).toBe(100n);
+    expect(rows[0]?.lineValue).toBe(line);
+  });
+
   it('auto-suspends a market that breaches its liability cap', async () => {
     const u = await fundedUser(200000);
     const { marketId, line, backPrice } = await fancyMarket('m6');

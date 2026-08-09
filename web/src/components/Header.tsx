@@ -22,9 +22,9 @@ export function Header() {
       </div>
       <div className="hdr__spacer" />
       {token && (
-        <div className="wallet">
+        <div className="wallet" onClick={() => navigate('/account')} style={{ cursor: 'pointer' }} title="My Account">
           <b>{balance.data ? formatMoney(balance.data.available) : '—'}</b>
-          <small>Player · play chips</small>
+          <small>My Account →</small>
         </div>
       )}
       <div className="login">

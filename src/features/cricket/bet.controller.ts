@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { chips } from '../../shared/money';
 import { CurrentSession, Session, SessionGuard } from '../identity';
+import { BetHistoryItem, BetHistoryService } from './bet-history.service';
 import { PlacementService } from './placement.service';
 import { placeBetDto, placeRunnerBetDto } from './schema';
 
@@ -21,11 +22,35 @@ const serialize = (b: PlacedBet) => ({
   status: b.status,
 });
 
+const serializeHistory = (b: BetHistoryItem) => ({
+  id: b.id,
+  placedAt: b.placedAt.toISOString(),
+  match: b.match,
+  market: b.market,
+  marketType: b.marketType,
+  selection: b.selection,
+  side: b.side,
+  stake: b.stake.toString(),
+  price: b.price.toString(),
+  status: b.status,
+  pnl: b.pnl === null ? null : b.pnl.toString(),
+});
+
 /** Placing a bet requires a session — the userId is the caller's, never taken from the body. */
 @Controller()
 @UseGuards(SessionGuard)
 export class BetController {
-  constructor(private readonly placement: PlacementService) {}
+  constructor(
+    private readonly placement: PlacementService,
+    private readonly history: BetHistoryService,
+  ) {}
+
+  /** The caller's own bet history (open + settled) with per-bet P&L — userId from the session. */
+  @Get('me/bets')
+  async myBets(@CurrentSession() s: Session, @Query('limit') limit?: string): Promise<ReturnType<typeof serializeHistory>[]> {
+    const items = await this.history.forUser(s.userId, limit ? Number.parseInt(limit, 10) : 50);
+    return items.map(serializeHistory);
+  }
 
   @Post('bets')
   @HttpCode(201)

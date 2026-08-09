@@ -76,6 +76,31 @@ export interface PlacedBetDto {
   potentialPayout: string;
   status: string;
 }
+export interface MeDto {
+  id: string;
+  email: string;
+  status: string;
+  role: string;
+}
+export interface StatementRowDto {
+  account: string;
+  amount: string;
+  kind: string;
+  at: string;
+}
+export interface BetHistoryDto {
+  id: string;
+  placedAt: string;
+  match: string;
+  market: string;
+  marketType: string;
+  selection: string;
+  side: string;
+  stake: string;
+  price: string;
+  status: string;
+  pnl: string | null;
+}
 
 /** A pending bet-slip selection captured from what the user saw (seenPrice/seenLine drive the two-phase check). */
 export interface Selection {

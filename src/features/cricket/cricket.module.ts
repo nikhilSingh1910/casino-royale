@@ -4,6 +4,7 @@ import { LedgerModule } from '../../ledger';
 import { AuditModule } from '../audit';
 import { IdentityModule } from '../identity';
 import { BetRepo } from './bet.repo';
+import { BetHistoryService } from './bet-history.service';
 import { CricketRepo } from './cricket.repo';
 import { FeedIngestService } from './feed-ingest.service';
 import { MarketRepo } from './market.repo';
@@ -19,7 +20,7 @@ import { JobsModule } from '../../jobs';
 @Module({
   imports: [DatabaseModule, LedgerModule, IdentityModule, AuditModule, JobsModule],
   controllers: [MatchController, BetController],
-  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService, LiveTicker, CricketJobs],
+  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService, LiveTicker, CricketJobs, BetHistoryService],
   exports: [FeedIngestService, CricketRepo, MarketService, PlacementService, SettlementService],
 })
 export class CricketModule {}
