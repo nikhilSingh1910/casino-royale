@@ -44,6 +44,20 @@ changes**. The registry abstraction is deliberately **not** built for one sport 
 extraction seam (resolve at #2): `trading`→cricket imports, the HTTP error filter, cricket-named
 schema tables. Codified as CLAUDE.md §4 "A sport is a module, not a fork".
 
+## Second adversarial audit remediation (2026-08-09, D50)
+
+A second whole-codebase audit after Phase 2 raised 21, **confirmed 11** (4 material, 7 low), all now
+**closed and tested** (suite 152 → 161). Full catalogue + disposition: `docs/HARDENING-FINDINGS.md`.
+
+- **H1** settled market can't be resurrected — atomic `transitionStatus` guard (settled is terminal).
+- **H2** fancy exposure/liability now evaluates real struck-line intervals, not a collapsed binary.
+- **H4** exposure aggregate is SQL-summed (exact, bounded) — no silent row-count truncation.
+- **H3/L4/L5** frontend session hygiene (cache cleared on auth change, 401→re-login, admin error state).
+- **L1** startup re-drive of stranded four-eyes approvals · **L2** reject audit before/after · **L3**
+  signup no longer an existence oracle · **L6** stale backlog lines corrected.
+- **Deferred (latent):** `settleBall` reopen / match-end-void races — unreachable until a real feed
+  adapter runs with `JOBS_ENABLED=true`; close then via H1's terminal-status guard.
+
 ## Adversarial audit remediation (2026-08-08, D47)
 
 A two-pass, fact-grounded adversarial audit found the **ledger primitive sound** but the reservation and
