@@ -10,6 +10,7 @@ import { AdminPage } from './pages/AdminPage';
 import { BallByBallPage } from './pages/BallByBallPage';
 import { HomePage } from './pages/HomePage';
 import { InPlayPage } from './pages/InPlayPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MatchPage } from './pages/MatchPage';
 
@@ -51,6 +52,7 @@ export function App() {
           <Route path="/m/:id" element={<MatchPage />} />
           <Route path="/bbb/:id" element={<BallByBallPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Route>
       </Routes>

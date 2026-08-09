@@ -67,6 +67,12 @@ const toPosition = (r: PositionRow): BetPosition => ({
   potentialPayout: chips(r.potential_payout),
 });
 
+/** One player's settled net P&L for the leaderboard (PC5). */
+export interface LeaderboardRow {
+  userId: string;
+  pnl: bigint;
+}
+
 /** A bet joined to its match/market context for the account view (PC1). */
 export interface BetHistoryRow {
   id: string;
@@ -204,6 +210,21 @@ export class BetRepo {
       .limit(limit)
       .execute();
     return rows.map((r) => ({ userId: r.user_id, stake: BigInt(r.stake) }));
+  }
+
+  /** Top players by settled net P&L (won → +winnings, lost → −reserved, void → 0). Integer SQL, bounded (§3.4). */
+  async leaderboard(limit: number): Promise<LeaderboardRow[]> {
+    const pnl = sql<string>`SUM(CASE status WHEN 'won' THEN potential_payout WHEN 'lost' THEN -reserved ELSE 0 END)`;
+    const rows = await this.db
+      .selectFrom('bet')
+      .select('user_id')
+      .select(pnl.as('pnl'))
+      .where('status', 'in', ['won', 'lost', 'void'])
+      .groupBy('user_id')
+      .orderBy(pnl, 'desc')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({ userId: r.user_id, pnl: BigInt(r.pnl) }));
   }
 
   /** A user's bets, newest first, joined to match/market for the account view (PC1). Bounded (§3.3). */

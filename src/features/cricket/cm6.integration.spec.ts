@@ -16,6 +16,7 @@ import {
   PlacementService,
   SettlementService,
 } from './index';
+import { BetRepo } from './bet.repo';
 
 const TEST_URL = 'postgres://localhost:5432/casino_royale_test';
 
@@ -27,6 +28,7 @@ describe('cricket end-to-end (integration, real Postgres) — CM6', () => {
   let placement: PlacementService;
   let settlement: SettlementService;
   let identity: IdentityRepo;
+  let betRepo: BetRepo;
 
   beforeAll(async () => {
     const testConfig = { get: (k: string) => ({ DATABASE_URL: TEST_URL, NODE_ENV: 'test', FEED_SOURCE: 'fixture', LOG_LEVEL: 'silent', PORT: 3000 })[k] };
@@ -42,6 +44,7 @@ describe('cricket end-to-end (integration, real Postgres) — CM6', () => {
     placement = moduleRef.get(PlacementService, { strict: false });
     settlement = moduleRef.get(SettlementService, { strict: false });
     identity = moduleRef.get(IdentityRepo, { strict: false });
+    betRepo = moduleRef.get(BetRepo, { strict: false });
   });
   afterAll(async () => {
     await db.destroy();
@@ -212,5 +215,20 @@ describe('cricket end-to-end (integration, real Postgres) — CM6', () => {
     expect(corrected).toEqual([expect.objectContaining({ from: 'lost', to: 'won' })]);
     expect(await bal(p)).toEqual({ available: 1000n + profit(100, pMo) + profit(100, pBm) + profit(100, pSess), reserved: 0n });
     await expectBalanced();
+  });
+
+  it('ranks players by settled net P&L on the leaderboard (PC5)', async () => {
+    const winner = await fundedUser(1000);
+    const loser = await fundedUser(1000);
+    const ms = await buildMatch('lb1');
+    const mo = findMarket(ms, 'match_odds');
+    const { price: pW } = await backRunner(winner, mo, 'A', 100);
+    await backRunner(loser, mo, 'B', 100);
+    await settlement.settleMatchResult('lb1', 'A', 'trader:alice');
+
+    const board = await betRepo.leaderboard(10);
+    expect(board.find((r) => r.userId === winner)?.pnl).toBe(profit(100, pW)); // winner: +profit
+    expect(board.find((r) => r.userId === loser)?.pnl).toBe(-100n); // loser: −stake
+    expect(board[0]?.userId).toBe(winner); // highest P&L ranked first
   });
 });

@@ -29,7 +29,9 @@ authoritative inputs, correct ledger balance.
 ## Next: Phase 2 — deepen the play-money cricket product (D49)
 
 Client chose (2026-08-09): stay play-money, deepen cricket. Sequence **PC1 → PC2 → PC3 → PC4 → PC5**
-(PC6 casino + Track B real-money **gated**). **PC1 ✅** (`/me/bets` + P&L, My Account UI) · **PC2 ✅** (daily bonus: `POST /me/bonus/claim`, mint idempotent per UTC day). **PC3 ✅** — a: four-eyes `settle_match` (real matches settle); b: role-gated `/admin` operator console (pending queue approve/reject, market suspend/void, declare-result, exposure, audit log). Using it needs a seeded `trader`/`admin` account (two, for four-eyes). **PC4 ✅** (SSE `GET /matches/stream` + LiveEvents bus; the ticker publishes on every change; client refetches on push; match-data polls reduced to a 15–20s fallback). **PC5** (engagement: leaderboard / promotions / referrals) is next. PC1 was a bounded
+(PC6 casino + Track B real-money **gated**). **PC1 ✅** (`/me/bets` + P&L, My Account UI) · **PC2 ✅** (daily bonus: `POST /me/bonus/claim`, mint idempotent per UTC day). **PC3 ✅** — a: four-eyes `settle_match` (real matches settle); b: role-gated `/admin` operator console (pending queue approve/reject, market suspend/void, declare-result, exposure, audit log). Using it needs a seeded `trader`/`admin` account (two, for four-eyes). **PC4 ✅** (SSE `GET /matches/stream` + LiveEvents bus; the ticker publishes on every change; client refetches on push; match-data polls reduced to a 15–20s fallback). **PC5 ✅** (leaderboard: `GET /leaderboard`, top players by settled net P&L, non-PII handles + a 'You' highlight).
+
+**Phase 2 (PC1–PC5) COMPLETE** — the play-money cricket product is feature-complete against D49. Next is the **gated** strategic decision: PC6 casino (2nd engine) or Track B real-money pivot (PRD §10/§11) — neither is scheduled. PC1 was a bounded
 `betsForUser` read (P&L derived, never stored) + My Account / Bet History / Statement / change-password /
 signup screens. Full plan in `docs/PLAN.md` (Phase 2) and D49. Each milestone runs the §2 loop.
 

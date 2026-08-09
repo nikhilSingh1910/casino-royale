@@ -88,6 +88,12 @@ export interface BonusClaimDto {
   reserved: string;
   nextClaimAt: string;
 }
+export interface LeaderboardRowDto {
+  rank: number;
+  handle: string;
+  pnl: string;
+  you: boolean;
+}
 export interface PendingActionDto {
   id: string;
   kind: string;

@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs
 import { chips } from '../../shared/money';
 import { CurrentSession, Session, SessionGuard } from '../identity';
 import { BetHistoryItem, BetHistoryService } from './bet-history.service';
+import { LeaderboardEntry, LeaderboardService } from './leaderboard.service';
 import { PlacementService } from './placement.service';
 import { placeBetDto, placeRunnerBetDto } from './schema';
 
@@ -36,6 +37,8 @@ const serializeHistory = (b: BetHistoryItem) => ({
   pnl: b.pnl === null ? null : b.pnl.toString(),
 });
 
+const serializeLeaderboard = (e: LeaderboardEntry) => ({ rank: e.rank, handle: e.handle, pnl: e.pnl.toString(), you: e.you });
+
 /** Placing a bet requires a session — the userId is the caller's, never taken from the body. */
 @Controller()
 @UseGuards(SessionGuard)
@@ -43,6 +46,7 @@ export class BetController {
   constructor(
     private readonly placement: PlacementService,
     private readonly history: BetHistoryService,
+    private readonly leaderboard: LeaderboardService,
   ) {}
 
   /** The caller's own bet history (open + settled) with per-bet P&L — userId from the session. */
@@ -50,6 +54,13 @@ export class BetController {
   async myBets(@CurrentSession() s: Session, @Query('limit') limit?: string): Promise<ReturnType<typeof serializeHistory>[]> {
     const items = await this.history.forUser(s.userId, limit ? Number.parseInt(limit, 10) : 50);
     return items.map(serializeHistory);
+  }
+
+  /** Engagement leaderboard — top players by settled net P&L; the caller's own row is flagged `you`. */
+  @Get('leaderboard')
+  async board(@CurrentSession() s: Session): Promise<ReturnType<typeof serializeLeaderboard>[]> {
+    const rows = await this.leaderboard.top(20, s.userId);
+    return rows.map(serializeLeaderboard);
   }
 
   @Post('bets')

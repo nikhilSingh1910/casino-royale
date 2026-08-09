@@ -249,3 +249,12 @@ a { color: var(--link); text-decoration: none; }
 .admin-declare { margin-top: 12px; padding: 12px 14px; background: var(--navy); color: #fff; border-radius: 8px; }
 .admin-declare__row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .admin-declare .input { max-width: 220px; }
+
+/* leaderboard (PC5) */
+.lb-you { background: #fff8e1; }
+.lb-you td { font-weight: 700; }
+.lb-badge { margin-left: 8px; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: var(--gold); color: #3a2f00; text-transform: uppercase; }
+.lb-rank { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 12px; background: #e6ebe8; color: var(--muted); }
+.lb-rank--1 { background: #f2b705; color: #3a2f00; }
+.lb-rank--2 { background: #c8ced4; color: #2a2f36; }
+.lb-rank--3 { background: #e0a06b; color: #3a1f00; }

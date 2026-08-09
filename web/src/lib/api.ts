@@ -1,4 +1,4 @@
-import type { AuditRowDto, BalanceDto, BetHistoryDto, BonusClaimDto, MatchListDto, MatchViewDto, MeDto, PendingActionDto, PlacedBetDto, ScoreDto, Side, StatementRowDto } from './types';
+import type { AuditRowDto, BalanceDto, BetHistoryDto, BonusClaimDto, LeaderboardRowDto, MatchListDto, MatchViewDto, MeDto, PendingActionDto, PlacedBetDto, ScoreDto, Side, StatementRowDto } from './types';
 
 const BASE = '/api'; // dev-proxied to the Nest backend (vite.config)
 
@@ -58,6 +58,7 @@ export const api = {
   statement: (token: string) => req<StatementRowDto[]>('/me/statement', {}, token),
   myBets: (token: string) => req<BetHistoryDto[]>('/me/bets', {}, token),
   claimBonus: (token: string) => req<BonusClaimDto>('/me/bonus/claim', { method: 'POST' }, token),
+  leaderboard: (token: string) => req<LeaderboardRowDto[]>('/leaderboard', {}, token),
   changePassword: (token: string, currentPassword: string, newPassword: string) =>
     req<void>('/me/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }, token),
   placeBet: (token: string, dto: PlaceFancy) => req<PlacedBetDto>('/bets', { method: 'POST', body: JSON.stringify(dto) }, token),

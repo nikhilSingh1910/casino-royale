@@ -21,6 +21,9 @@ export function Nav() {
       <NavLink to="/" end className={cls}>
         Cricket
       </NavLink>
+      <NavLink to="/leaderboard" className={cls}>
+        Leaderboard
+      </NavLink>
       {isOperator && (
         <NavLink to="/admin" className={cls}>
           Admin
