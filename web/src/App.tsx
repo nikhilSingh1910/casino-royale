@@ -5,6 +5,7 @@ import { OpenBets } from './components/OpenBets';
 import { Sidebar } from './components/Sidebar';
 import { SelectionProvider } from './lib/selection';
 import { AccountPage } from './pages/AccountPage';
+import { AdminPage } from './pages/AdminPage';
 import { BallByBallPage } from './pages/BallByBallPage';
 import { HomePage } from './pages/HomePage';
 import { InPlayPage } from './pages/InPlayPage';
@@ -42,6 +43,7 @@ export function App() {
           <Route path="/m/:id" element={<MatchPage />} />
           <Route path="/bbb/:id" element={<BallByBallPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
       </Routes>
     </SelectionProvider>

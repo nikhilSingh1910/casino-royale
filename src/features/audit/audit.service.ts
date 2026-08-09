@@ -27,6 +27,10 @@ export class AuditService {
     });
   }
 
+  recent(limit: number): Promise<AuditRow[]> {
+    return this.repo.recent(limit);
+  }
+
   forSubject(subject: string, limit: number): Promise<AuditRow[]> {
     return this.repo.forSubject(subject, limit);
   }

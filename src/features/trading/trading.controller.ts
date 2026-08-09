@@ -48,6 +48,18 @@ export class TradingController {
     return this.trading.reject(id, s.userId, dto.reason);
   }
 
+  @Get('actions')
+  async pendingActions() {
+    const rows = await this.trading.pendingActions(50);
+    return rows.map((a) => ({ id: a.id, kind: a.kind, marketId: a.market_id, proposedBy: a.proposed_by, createdAt: a.created_at.toISOString() }));
+  }
+
+  @Get('audit')
+  async audit() {
+    const rows = await this.trading.recentAudit(100);
+    return rows.map((r) => ({ actor: r.actor, action: r.action, subject: r.subject, at: r.at.toISOString() }));
+  }
+
   @Get('exposure/market/:id')
   async exposureMarket(@Param('id') id: string): Promise<{ liability: string }> {
     return { liability: (await this.trading.exposureByMarket(id)).toString() };

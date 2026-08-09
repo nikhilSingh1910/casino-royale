@@ -137,6 +137,15 @@ export class TradingService {
     await this.audit.record({ actor: operator, action: `action.reject.${action.kind}`, subject: action.market_id, reason });
   }
 
+  // ---- operator console reads (PC3b) ----------------------------------------
+
+  pendingActions(limit: number) {
+    return this.actions.pending(limit);
+  }
+  recentAudit(limit: number) {
+    return this.audit.recent(limit);
+  }
+
   // ---- read-only risk views (XC5.1) -----------------------------------------
 
   exposureByMarket(marketId: string): Promise<Chips> {

@@ -21,6 +21,17 @@ export class AuditRepo {
       .execute();
   }
 
+  /** The recent audit trail across all subjects, newest first, bounded (CLAUDE.md §3.3). */
+  async recent(limit: number): Promise<AuditRow[]> {
+    const rows = await this.db
+      .selectFrom('audit_log')
+      .select(['actor', 'action', 'subject', 'detail', 'created_at as at'])
+      .orderBy('id', 'desc')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({ actor: r.actor, action: r.action, subject: r.subject, detail: r.detail, at: r.at }));
+  }
+
   /** Audit trail for one subject (e.g. a market), newest first, bounded (CLAUDE.md §3.3). */
   async forSubject(subject: string, limit: number): Promise<AuditRow[]> {
     const rows = await this.db

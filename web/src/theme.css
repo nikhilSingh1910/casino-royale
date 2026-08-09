@@ -241,3 +241,11 @@ a { color: var(--link); text-decoration: none; }
 .bonus-card__msg { font-size: 12px; margin-top: 6px; }
 .bonus-card__msg.is-ok { color: #cdebd6; }
 .bonus-card__msg.is-muted { color: #ffe0b0; }
+
+/* operator console (PC3b) */
+.mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px; }
+.admin-msg { margin: 10px 12px 0; padding: 8px 12px; background: #eef4f0; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; color: var(--navy); }
+.admin-exp { padding: 12px 12px 0; font-size: 13px; color: var(--ink); }
+.admin-declare { margin-top: 12px; padding: 12px 14px; background: var(--navy); color: #fff; border-radius: 8px; }
+.admin-declare__row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.admin-declare .input { max-width: 220px; }

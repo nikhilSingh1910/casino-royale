@@ -171,6 +171,14 @@ describe('trading console (integration, real Postgres) — CM5', () => {
     await expect(trading.proposeMatchResult('tm2', 'Nonexistent', 'no such team', ALICE)).rejects.toThrow(MatchResultError);
   });
 
+  it('exposes the pending queue and the audit trail to operators (PC3b)', async () => {
+    const { marketId } = await fancyMarket('tr1');
+    await trading.suspendMarket(marketId, ALICE); // an audited action
+    const { id } = await trading.propose('void', marketId, { reason: 'rain' }, ALICE); // a pending action
+    expect((await trading.pendingActions(50)).map((a) => a.id)).toContain(id);
+    expect((await trading.recentAudit(100)).some((r) => r.action === 'market.suspend' && r.subject === marketId)).toBe(true);
+  });
+
   it('re-running an approved override is a no-op — durable retry safety (D45b)', async () => {
     const u = await fundedUser(1000);
     const { marketId } = await fancyMarket('t9');

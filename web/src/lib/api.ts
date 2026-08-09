@@ -1,4 +1,4 @@
-import type { BalanceDto, BetHistoryDto, BonusClaimDto, MatchListDto, MatchViewDto, MeDto, PlacedBetDto, ScoreDto, Side, StatementRowDto } from './types';
+import type { AuditRowDto, BalanceDto, BetHistoryDto, BonusClaimDto, MatchListDto, MatchViewDto, MeDto, PendingActionDto, PlacedBetDto, ScoreDto, Side, StatementRowDto } from './types';
 
 const BASE = '/api'; // dev-proxied to the Nest backend (vite.config)
 
@@ -62,4 +62,17 @@ export const api = {
     req<void>('/me/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }, token),
   placeBet: (token: string, dto: PlaceFancy) => req<PlacedBetDto>('/bets', { method: 'POST', body: JSON.stringify(dto) }, token),
   placeRunnerBet: (token: string, dto: PlaceRunner) => req<PlacedBetDto>('/runner-bets', { method: 'POST', body: JSON.stringify(dto) }, token),
+
+  // operator console (role-gated to trader/admin — the backend enforces via RolesGuard)
+  pendingActions: (token: string) => req<PendingActionDto[]>('/trading/actions', {}, token),
+  auditLog: (token: string) => req<AuditRowDto[]>('/trading/audit', {}, token),
+  exposureMatch: (token: string, matchId: string) => req<{ liability: string }>(`/trading/exposure/match/${matchId}`, {}, token),
+  suspendMarket: (token: string, marketId: string) => req<void>(`/trading/markets/${marketId}/suspend`, { method: 'POST' }, token),
+  reopenMarket: (token: string, marketId: string) => req<void>(`/trading/markets/${marketId}/reopen`, { method: 'POST' }, token),
+  proposeAction: (token: string, body: { kind: 'void' | 'resettle'; marketId: string; reason: string; correctionId?: string }) =>
+    req<{ id: string }>('/trading/actions', { method: 'POST', body: JSON.stringify(body) }, token),
+  declareResult: (token: string, matchId: string, body: { winner: string; reason: string }) =>
+    req<{ id: string }>(`/trading/matches/${matchId}/declare-result`, { method: 'POST', body: JSON.stringify(body) }, token),
+  approveAction: (token: string, id: string) => req<{ kind: string }>(`/trading/actions/${id}/approve`, { method: 'POST' }, token),
+  rejectAction: (token: string, id: string, reason: string) => req<void>(`/trading/actions/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }, token),
 };

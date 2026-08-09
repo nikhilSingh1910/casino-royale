@@ -29,7 +29,7 @@ authoritative inputs, correct ledger balance.
 ## Next: Phase 2 — deepen the play-money cricket product (D49)
 
 Client chose (2026-08-09): stay play-money, deepen cricket. Sequence **PC1 → PC2 → PC3 → PC4 → PC5**
-(PC6 casino + Track B real-money **gated**). **PC1 ✅** (`/me/bets` + P&L, My Account UI) · **PC2 ✅** (daily bonus: `POST /me/bonus/claim`, mint idempotent per UTC day). **PC3a ✅** (four-eyes `settle_match`: `POST /trading/matches/:id/declare-result` → real matches settle). **PC3b** (the `/admin` operator UI + read endpoints) is next. PC1 was a bounded
+(PC6 casino + Track B real-money **gated**). **PC1 ✅** (`/me/bets` + P&L, My Account UI) · **PC2 ✅** (daily bonus: `POST /me/bonus/claim`, mint idempotent per UTC day). **PC3 ✅** — a: four-eyes `settle_match` (real matches settle); b: role-gated `/admin` operator console (pending queue approve/reject, market suspend/void, declare-result, exposure, audit log). Using it needs a seeded `trader`/`admin` account (two, for four-eyes). **PC4** (live push, SSE) is next. PC1 was a bounded
 `betsForUser` read (P&L derived, never stored) + My Account / Bet History / Statement / change-password /
 signup screens. Full plan in `docs/PLAN.md` (Phase 2) and D49. Each milestone runs the §2 loop.
 

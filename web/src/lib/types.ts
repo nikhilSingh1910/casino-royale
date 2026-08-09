@@ -88,6 +88,19 @@ export interface BonusClaimDto {
   reserved: string;
   nextClaimAt: string;
 }
+export interface PendingActionDto {
+  id: string;
+  kind: string;
+  marketId: string;
+  proposedBy: string;
+  createdAt: string;
+}
+export interface AuditRowDto {
+  actor: string;
+  action: string;
+  subject: string | null;
+  at: string;
+}
 export interface StatementRowDto {
   account: string;
   amount: string;
