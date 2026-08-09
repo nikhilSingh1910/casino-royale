@@ -177,5 +177,9 @@ export async function migrate(db: Kysely<Database>): Promise<void> {
     ALTER TABLE operator_action DROP CONSTRAINT IF EXISTS operator_action_status_check;
     ALTER TABLE operator_action DROP CONSTRAINT IF EXISTS operator_action_status_ck;
     ALTER TABLE operator_action ADD CONSTRAINT operator_action_status_ck CHECK (status IN ('pending', 'approved', 'executed', 'rejected'));
+    -- Widen operator_action.kind to include 'settle_match' (PC3 — declared match result). Idempotent.
+    ALTER TABLE operator_action DROP CONSTRAINT IF EXISTS operator_action_kind_check;
+    ALTER TABLE operator_action DROP CONSTRAINT IF EXISTS operator_action_kind_ck;
+    ALTER TABLE operator_action ADD CONSTRAINT operator_action_kind_ck CHECK (kind IN ('void', 'resettle', 'settle_match'));
   `.execute(db);
 }

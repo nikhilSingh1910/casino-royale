@@ -62,12 +62,13 @@ export class SettlementService {
     await this.markets.setStatusForMarket(marketId, 'open');
   }
 
-  /** Settle a completed match: runner markets from the derived winner, then void any leftover open ball market (D46). */
-  async settleMatch(matchId: string, winner: string): Promise<void> {
-    await this.settleMatchResult(matchId, winner, 'ticker');
+  /** Settle a completed match: runner markets from the winner, then void any leftover open ball market
+   *  (D46 auto-ticker; PC3 operator-declared result). `actor` attributes it in the audit trail. */
+  async settleMatch(matchId: string, winner: string, actor = 'ticker'): Promise<void> {
+    await this.settleMatchResult(matchId, winner, actor);
     const markets = await this.markets.marketsForMatch(matchId, RESETTLE_MAX);
     const bbb = markets.find((m) => m.market_type === 'ball_by_ball');
-    if (bbb && bbb.status !== 'settled') await this.voidMarket(bbb.id, 'ticker', 'match ended');
+    if (bbb && bbb.status !== 'settled') await this.voidMarket(bbb.id, actor, 'match ended');
   }
 
   async settleFancyMarket(marketId: string): Promise<MarketSettlement> {

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { CurrentSession, Roles, RolesGuard, Session, SessionGuard } from '../identity';
-import { proposeDto, rejectDto } from './schema';
+import { declareResultDto, proposeDto, rejectDto } from './schema';
 import { TradingService } from './trading.service';
 
 /** Operator console (XC5.2/XC5.5). Role-gated to trader/admin by the one role policy (rule 9). */
@@ -26,6 +26,13 @@ export class TradingController {
   propose(@Body() body: unknown, @CurrentSession() s: Session) {
     const dto = proposeDto.parse(body);
     return this.trading.propose(dto.kind, dto.marketId, { reason: dto.reason, correctionId: dto.correctionId }, s.userId);
+  }
+
+  /** Declare a real match's result — proposes a four-eyes settle_match action (a second operator approves). */
+  @Post('matches/:id/declare-result')
+  declareResult(@Param('id') id: string, @Body() body: unknown, @CurrentSession() s: Session) {
+    const dto = declareResultDto.parse(body);
+    return this.trading.proposeMatchResult(id, dto.winner, dto.reason, s.userId);
   }
 
   @Post('actions/:id/approve')

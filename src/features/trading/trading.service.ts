@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Chips } from '../../shared/money';
 import { OperatorActionKind } from '../../db';
 import { AuditService } from '../audit';
-import { MarketService, PlacementService, SettlementService } from '../cricket';
+import { MarketService, MatchResultError, PlacementService, SettlementService } from '../cricket';
 import { JobQueue } from '../../jobs';
 import { ActionNotFoundError, ActionNotPendingError, SoDViolationError } from './errors';
 import { flagConcentration, IntegrityFlag } from './integrity';
@@ -11,6 +11,7 @@ import { TradingRepo } from './trading.repo';
 export interface ProposalParams {
   reason: string;
   correctionId?: string;
+  winner?: string; // settle_match: the declared winning runner name (PC3)
 }
 export type ApproveResult = { kind: OperatorActionKind; actionId: string };
 
@@ -75,6 +76,21 @@ export class TradingService {
     return { id };
   }
 
+  /**
+   * Propose a declared match result (four-eyes settle_match, PC3): validate the winner is a runner, anchor
+   * the action to the match-odds market, and store the winner for the approver to execute. Real matches
+   * settle this way; the demo ticker auto-settles generated ones.
+   */
+  async proposeMatchResult(matchId: string, winner: string, reason: string, adjuster: string): Promise<{ id: string }> {
+    const view = await this.markets.getMatchView(matchId);
+    const mo = view?.markets.find((m) => m.type === 'match_odds');
+    if (!mo) throw new MatchResultError(`no match-odds market for match ${matchId}`);
+    if (!mo.runners.some((r) => r.name === winner)) throw new MatchResultError(`'${winner}' is not a runner in match ${matchId}`);
+    const { id } = await this.actions.createAction('settle_match', mo.id, { reason, winner }, adjuster);
+    await this.audit.record({ actor: adjuster, action: 'action.propose.settle_match', subject: matchId, after: { actionId: id, winner } });
+    return { id };
+  }
+
   async approve(actionId: string, approver: string): Promise<ApproveResult> {
     const action = await this.actions.findAction(actionId);
     if (!action) throw new ActionNotFoundError(actionId);
@@ -105,7 +121,10 @@ export class TradingService {
     const params = action.params as ProposalParams;
     const actor = action.approved_by ?? 'system';
     if (action.kind === 'void') await this.settlement.voidMarket(action.market_id, actor, params.reason);
-    else await this.settlement.resettleFancyMarket(action.market_id, actor, params.reason, params.correctionId ?? actionId);
+    else if (action.kind === 'settle_match') {
+      const m = await this.markets.getMarket(action.market_id); // the anchor match-odds market → its match
+      if (m?.match_id && params.winner) await this.settlement.settleMatch(m.match_id, params.winner, actor);
+    } else await this.settlement.resettleFancyMarket(action.market_id, actor, params.reason, params.correctionId ?? actionId);
     await this.actions.markExecuted(actionId);
   }
 

@@ -148,7 +148,7 @@ export interface BetTable {
   placed_at: Generated<Date>;
 }
 
-export type OperatorActionKind = 'void' | 'resettle';
+export type OperatorActionKind = 'void' | 'resettle' | 'settle_match';
 export type OperatorActionStatus = 'pending' | 'approved' | 'executed' | 'rejected';
 
 /** A dual-auth (four-eyes) back-office action: proposed by one operator, approved by another (D36). */

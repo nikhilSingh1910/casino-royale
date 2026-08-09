@@ -6,7 +6,7 @@ import { LedgerService } from '../../ledger';
 import { ConfigService } from '../../shared/config';
 import { chips } from '../../shared/money';
 import { price, winnings } from '../../shared/odds';
-import { CricketRepo, MarketService, PlacementService, SettlementService } from '../cricket';
+import { CricketRepo, MarketService, MatchResultError, PlacementService, SettlementService } from '../cricket';
 import { IdentityRepo } from '../identity';
 import { SoDViolationError, ActionNotPendingError } from './errors';
 import { TradingModule } from './trading.module';
@@ -147,6 +147,28 @@ describe('trading console (integration, real Postgres) — CM5', () => {
 
     const profit = winnings(chips(100), price(back)) as bigint;
     expect(await available(u)).toBe(1000n + profit); // now paid as a winner
+  });
+
+  it('declares a match result under four-eyes — match-odds settles and the backer is paid (PC3)', async () => {
+    const backer = await fundedUser(1000);
+    await fancyMarket('tm1'); // creates every market for the 'A v B' match
+    const mo = (await marketService.getMarkets('tm1')).find((m) => m.market_type === 'match_odds');
+    const rA = await db.selectFrom('market_runner').select(['id', 'back_price']).where('market_id', '=', mo?.id ?? '').where('runner_name', '=', 'A').executeTakeFirstOrThrow();
+    await placement.placeRunnerBet({ userId: backer, marketId: mo?.id ?? '', runnerId: rA.id, side: 'back', stake: chips(100), seenPrice: rA.back_price, idempotencyKey: randomUUID() });
+    expect(await available(backer)).toBe(900n);
+
+    const { id } = await trading.proposeMatchResult('tm1', 'A', 'match ended', ALICE);
+    await trading.approve(id, BOB); // a different operator approves → executes
+
+    const profit = winnings(chips(100), price(rA.back_price)) as bigint;
+    expect(await available(backer)).toBe(1000n + profit); // backer of A is paid
+    expect((await marketService.getMarket(mo?.id ?? ''))?.status).toBe('settled');
+    expect((await db.selectFrom('operator_action').select('status').where('id', '=', id).executeTakeFirst())?.status).toBe('executed');
+  });
+
+  it('rejects declaring a non-runner as the winner (PC3)', async () => {
+    await fancyMarket('tm2');
+    await expect(trading.proposeMatchResult('tm2', 'Nonexistent', 'no such team', ALICE)).rejects.toThrow(MatchResultError);
   });
 
   it('re-running an approved override is a no-op — durable retry safety (D45b)', async () => {
