@@ -1,17 +1,13 @@
 // The one place money and odds are formatted for display (CLAUDE.md §5 rule 5). The UI does NO money
 // arithmetic beyond the integer-only conversions here — no float ever touches a money value (§3.1).
 
-const MINOR_PER_UNIT = 100n; // chips are integer minor units (cents)
 const groupInt = new Intl.NumberFormat('en-IE'); // groups a bigint integer; never sees a float
 
-/** Format integer minor units (string/bigint from the API) as fiat: "1000" → "€10.00". Play chips shown as fiat (PRD §4). */
-export function formatMoney(minorUnits: string | bigint): string {
-  const n = typeof minorUnits === 'bigint' ? minorUnits : BigInt(minorUnits);
+/** Format credits (integer chips from the API) as a grouped whole number: "100000" → "100,000". Play-money credits, not fiat (D52). */
+export function formatMoney(credits: string | bigint): string {
+  const n = typeof credits === 'bigint' ? credits : BigInt(credits);
   const neg = n < 0n;
-  const abs = neg ? -n : n;
-  const whole = groupInt.format(abs / MINOR_PER_UNIT);
-  const cents = (abs % MINOR_PER_UNIT).toString().padStart(2, '0');
-  return `${neg ? '-' : ''}€${whole}.${cents}`;
+  return `${neg ? '-' : ''}${groupInt.format(neg ? -n : n)}`;
 }
 
 /** Format a scaled-integer odds price ("19500") as decimal: "1.95". */
@@ -30,17 +26,15 @@ export function formatRate(scaled: string | bigint): string {
 
 /** Profit (back) / liability (lay) on a stake at a scaled price: stake × (odds − 1), rounded UP to match the
  *  backend's `winnings` (customer's favour, §3.1) — so the slip equals the placed bet's payout/reservation. */
-export function estimateProfit(stakeMinor: bigint, priceScaled: string | bigint): bigint {
+export function estimateProfit(stake: bigint, priceScaled: string | bigint): bigint {
   const price = typeof priceScaled === 'bigint' ? priceScaled : BigInt(priceScaled);
-  return (stakeMinor * (price - 10000n) + 9999n) / 10000n;
+  return (stake * (price - 10000n) + 9999n) / 10000n;
 }
 
-/** Parse a euro input ("1.50", "10") to integer minor units. Float-free; null if malformed. */
-export function parseStakeToMinor(input: string): bigint | null {
+/** Parse a whole-credit stake ("1000") to chips (1 credit = 1 chip). No fractional credits; null if malformed or ≤ 0. */
+export function parseStake(input: string): bigint | null {
   const t = input.trim();
-  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
-  const [wholePart, fracPart = ''] = t.split('.');
-  const cents = (fracPart + '00').slice(0, 2);
-  const minor = BigInt(wholePart ?? '0') * MINOR_PER_UNIT + BigInt(cents);
-  return minor > 0n ? minor : null;
+  if (!/^\d+$/.test(t)) return null;
+  const n = BigInt(t);
+  return n > 0n ? n : null;
 }

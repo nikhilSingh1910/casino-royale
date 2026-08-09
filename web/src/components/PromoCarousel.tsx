@@ -36,7 +36,7 @@ const SLIDES: Slide[] = [
         Trade Cricket <span className="g">Live</span>
       </>
     ),
-    sub: 'Real markets, live scores, virtual chips — the exchange, on the game.',
+    sub: 'Real markets, live scores, virtual credits — the exchange, on the game.',
     art: <Bat className="promo__art" />,
   },
 ];

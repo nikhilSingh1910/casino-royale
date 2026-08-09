@@ -454,4 +454,7 @@ barrel. Both enforced by `pnpm lint:boundaries`.
 - Domain terms are used precisely and consistently: *back*, *lay*, *stake*, *liability*,
   *exposure*, *matched*, *unmatched*, *settled*, *voided*. These have exact meanings; a loose
   synonym in a variable name becomes a loose assumption in a formula.
-- Currency is always displayed in fiat, never as points, chips or units (`PRD.md` §4).
+- Play-money balances are displayed as **credits** — a grouped whole integer, no fiat symbol, no
+  decimals (D52); 1 credit = 1 stored chip. Presenting play chips as fiat (`€`) is a real-money-
+  compliance risk under D32, so the fiat rule of `PRD.md` §4 is real-money reference only, revived
+  only if Track B ships. (Storage is unchanged — chips are still integer units, no float, §3.1.)

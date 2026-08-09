@@ -1157,3 +1157,22 @@ refinements found, none a wrong-ledger figure.
 
 **Consequence.** The display layer is now consistent with the ledger to the cent, reserved funds are
 visible, and the wallet stays fresh. Backend 161 tests green; web green.
+
+### D52 — Play-money is displayed as "credits", not fiat (reverses §8)
+
+**Context.** The UI formatted play chips as euros (`€10.00`), per bible §8 / PRD §4 ("displayed in fiat").
+The screen-numbers review (D51) flagged that presenting *virtual* chips as real currency is exactly what a
+gambling regulator scrutinises for a play-money product. The client asked to remove the `€` sign and show
+**credits** only.
+
+**Decision — display credits as whole integers; 1 credit = 1 stored chip.**
+- `formatMoney` returns a grouped whole number, no symbol, no decimals: `100000 → "100,000"`. The `÷100`
+  fiat mapping is gone.
+- The stake box takes whole credits (`parseStake`, no fractional credits, 1:1 to chips); quick amounts
+  rescale to chip units (500 / 1,000 / 2,500 / 10,000).
+- All user-facing "€"/"chips" copy → "credits" (header, bet slip, bonus, statement, promo, ball-by-ball).
+- **Storage and money logic are unchanged** — chips are still integer units end to end (no float, §3.1);
+  only the display mapping and stake parsing changed. Odds are unaffected (still decimal, e.g. 1.95).
+
+**Consequence.** §8's fiat rule is now real-money reference only (revived if Track B ships); play-money shows
+credits. This removes the "play money shown as €" compliance risk. Frontend-only + docs; web green.

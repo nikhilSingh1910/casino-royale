@@ -25,7 +25,7 @@ export function Header() {
       {token && (
         <div className="wallet" onClick={() => navigate('/account')} style={{ cursor: 'pointer' }} title="My Account">
           <b>{balance.data ? formatMoney(balance.data.available) : '—'}</b>
-          <small>My Account →</small>
+          <small>credits · My Account →</small>
         </div>
       )}
       <div className="login">

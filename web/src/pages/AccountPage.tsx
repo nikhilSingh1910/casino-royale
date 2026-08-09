@@ -59,7 +59,7 @@ function BonusCard({ token }: { token: string }) {
     mutationFn: () => api.claimBonus(token),
     onSuccess: (r) => {
       if (r.claimed) {
-        setMsg({ ok: true, text: `✓ ${amount ?? 'Bonus'} added to your balance` });
+        setMsg({ ok: true, text: `✓ ${amount ? `${amount} credits` : 'Your bonus'} added to your balance` });
         void qc.invalidateQueries({ queryKey: ['balance'] });
         void qc.invalidateQueries({ queryKey: ['statement'] });
         void qc.invalidateQueries({ queryKey: ['myBets'] });
@@ -75,7 +75,7 @@ function BonusCard({ token }: { token: string }) {
     <div className="bonus-card">
       <div>
         <div className="bonus-card__title">Daily Bonus</div>
-        <div className="bonus-card__sub">{amount ? `Claim ${amount} of free play chips` : 'Claim free play chips'} — once a day.</div>
+        <div className="bonus-card__sub">{amount ? `Claim ${amount} of free play credits` : 'Claim free play credits'} — once a day.</div>
       </div>
       <div className="bonus-card__action">
         <button className="btn btn--green" onClick={() => claim.mutate()} disabled={claim.isPending}>
@@ -148,7 +148,7 @@ function StatementTab({ token }: { token: string }) {
   return (
     <div className="panel">
       {rows.length === 0 ? (
-        <EmptyState title="No chip movements yet" hint="Top-ups, bets and settlements appear here." />
+        <EmptyState title="No credit movements yet" hint="Top-ups, bets and settlements appear here." />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table className="acct-table">
@@ -159,7 +159,7 @@ function StatementTab({ token }: { token: string }) {
                 return (
                   <tr key={i}>
                     <td>{r.kind}</td>
-                    <td className="acct-sub">{r.account.includes('reserved') ? 'Reserved' : 'Chips'}</td>
+                    <td className="acct-sub">{r.account.includes('reserved') ? 'Reserved' : 'Credits'}</td>
                     <td className={`num ${amt === 0n ? '' : amt > 0n ? 'pnl-pos' : 'pnl-neg'}`}>{(amt > 0n ? '+' : '') + formatMoney(r.amount)}</td>
                     <td className="acct-sub">{new Date(r.at).toLocaleString()}</td>
                   </tr>

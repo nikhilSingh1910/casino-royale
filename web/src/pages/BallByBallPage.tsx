@@ -37,7 +37,7 @@ export function BallByBallPage() {
       </div>
       <div className="bbb-bar">
         <span>Runs ⓘ</span>
-        <span>Min €1 · Max €1,000</span>
+        <span>Min 100 · Max 100,000 credits</span>
       </div>
       {!bbb ? (
         <div className="panel"><EmptyState title="No ball-by-ball market" hint="It opens once the match is live." /></div>

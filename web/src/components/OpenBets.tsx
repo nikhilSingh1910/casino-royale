@@ -2,11 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { api, ApiError, type PlaceFancy, type PlaceRunner } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { estimateProfit, formatMoney, formatOdds, parseStakeToMinor } from '../lib/format';
+import { estimateProfit, formatMoney, formatOdds, parseStake } from '../lib/format';
 import { useSelection } from '../lib/selection';
 import type { PlacedBetDto, Selection } from '../lib/types';
 
-const QUICK = ['5', '10', '25', '100'];
+const QUICK = ['500', '1000', '2500', '10000'];
 const tagLabel = (s: Selection) => (s.kind === 'fancy' ? (s.side === 'back' ? 'Yes' : 'No') : s.side === 'back' ? 'Back' : 'Lay');
 
 export function OpenBets() {
@@ -15,16 +15,16 @@ export function OpenBets() {
   const qc = useQueryClient();
   const [stake, setStake] = useState('');
   const [ok, setOk] = useState<string | null>(null);
-  const stakeMinor = parseStakeToMinor(stake);
+  const stakeCredits = parseStake(stake);
   const back = selection?.side === 'back';
   // One idempotency key per bet intent: stable across retries of the same selection+stake (so a retry
   // dedupes, never double-places, C4), fresh when either changes or a bet lands (onSuccess clears stake).
   const betKey = useMemo(() => crypto.randomUUID(), [selection, stake]);
 
   const place = useMutation<PlacedBetDto, Error, bigint>({
-    mutationFn: (minor) => {
+    mutationFn: (amount) => {
       if (!token || !selection) throw new ApiError(401, 'auth', 'Sign in to place a bet');
-      const common = { stake: minor.toString(), seenPrice: selection.price, idempotencyKey: betKey };
+      const common = { stake: amount.toString(), seenPrice: selection.price, idempotencyKey: betKey };
       if (selection.kind === 'runner') {
         const dto: PlaceRunner = { marketId: selection.marketId, runnerId: selection.runnerId as string, side: selection.side, ...common };
         return api.placeRunnerBet(token, dto);
@@ -69,25 +69,25 @@ export function OpenBets() {
             <>
               <input
                 className="input"
-                inputMode="decimal"
-                placeholder="Stake (€)"
+                inputMode="numeric"
+                placeholder="Stake (credits)"
                 value={stake}
                 onChange={(e) => { setStake(e.target.value); setOk(null); place.reset(); }}
-                aria-label="Stake in euros"
+                aria-label="Stake in credits"
               />
               <div className="chips">
                 {QUICK.map((q) => (
                   <button key={q} className="chip" onClick={() => { setStake(q); setOk(null); place.reset(); }}>
-                    €{q}
+                    {formatMoney(q)}
                   </button>
                 ))}
               </div>
-              {stakeMinor && (
+              {stakeCredits && (
                 <div className="est">
-                  {back ? 'Est. profit' : 'Liability'} <b>{formatMoney(estimateProfit(stakeMinor, selection.price))}</b>
+                  {back ? 'Est. profit' : 'Liability'} <b>{formatMoney(estimateProfit(stakeCredits, selection.price))}</b> credits
                 </div>
               )}
-              <button className="btn btn--green" style={{ marginTop: 10 }} disabled={!stakeMinor || place.isPending} onClick={() => stakeMinor && place.mutate(stakeMinor)}>
+              <button className="btn btn--green" style={{ marginTop: 10 }} disabled={!stakeCredits || place.isPending} onClick={() => stakeCredits && place.mutate(stakeCredits)}>
                 {place.isPending ? '…' : 'Place bet'}
               </button>
               {ok && <div className="msg msg--ok">✓ {ok}</div>}
