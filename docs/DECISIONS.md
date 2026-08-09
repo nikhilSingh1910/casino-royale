@@ -1135,3 +1135,25 @@ by routing the bbb reopen through H1's terminal-status guard.
 **Consequence.** The money spine held under a second audit (no confirmed mis-moved chip); the real defects
 were operator-integrity, risk-figure correctness, and frontend session hygiene — all closed. Backend 29
 suites / 161 tests green (+9); web green.
+
+### D51 — Screen-numbers review + display refinements (N1–N4)
+
+**Context.** A review of every number shown on the UI, traced backend → wire → formatter → display.
+Verified sound: all money/odds flow through the single formatter (no float, no lossy parse, no ad-hoc
+scaling); **P&L is net profit** (`potential_payout = winnings = stake × (odds−1)`), consistent between the
+account view and the leaderboard; odds `/10000`, overs `floor(b/6).(b%6)`, chips shown as € (§8). Four
+refinements found, none a wrong-ledger figure.
+
+**Decision — fix N1–N4 (grouped, §2 loop).**
+- **N1** reserved balance was displayed nowhere → an Account balance card (Available / In open bets /
+  Total; integer add, no float).
+- **N2** the slip's `estimateProfit` floored while the backend `winnings` ceils → align to **ceil** so the
+  slip equals the placed bet's payout/reservation exactly (customer's favour, §3.1); a lay's liability no
+  longer understates.
+- **N3** the wallet went stale after a live settlement → `useLiveUpdates` also invalidates
+  `balance`/`myBets`/`statement`/`leaderboard` (inactive queries are a no-op) + a 20 s fallback interval.
+- **N4** hardcoded "€500" bonus label → single source: backend `GET /me/bonus` from `DAILY_BONUS`, shown via
+  `formatMoney`; degrades gracefully if the info fetch fails (claim never blocked).
+
+**Consequence.** The display layer is now consistent with the ledger to the cent, reserved funds are
+visible, and the wallet stays fresh. Backend 161 tests green; web green.

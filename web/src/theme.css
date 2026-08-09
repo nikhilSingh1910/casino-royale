@@ -258,3 +258,11 @@ a { color: var(--link); text-decoration: none; }
 .lb-rank--1 { background: #f2b705; color: #3a2f00; }
 .lb-rank--2 { background: #c8ced4; color: #2a2f36; }
 .lb-rank--3 { background: #e0a06b; color: #3a1f00; }
+
+/* account balance summary (N1) */
+.bal-card { display: flex; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
+.bal-card__cell { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.bal-card__cell span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.bal-card__cell b { font-size: 18px; color: var(--ink); }
+.bal-card__cell--total { text-align: right; align-items: flex-end; }
+.bal-card__cell--total b { color: var(--green); }

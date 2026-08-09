@@ -28,11 +28,11 @@ export function formatRate(scaled: string | bigint): string {
   return ((n - 10000n) / 100n).toString();
 }
 
-/** Estimated profit/liability on a stake at a scaled price: stake × (odds − 1). Integer floor, float-free.
- *  An indicative figure only — the ledger's `potential_payout` on the placed bet is authoritative. */
+/** Profit (back) / liability (lay) on a stake at a scaled price: stake × (odds − 1), rounded UP to match the
+ *  backend's `winnings` (customer's favour, §3.1) — so the slip equals the placed bet's payout/reservation. */
 export function estimateProfit(stakeMinor: bigint, priceScaled: string | bigint): bigint {
   const price = typeof priceScaled === 'bigint' ? priceScaled : BigInt(priceScaled);
-  return (stakeMinor * (price - 10000n)) / 10000n;
+  return (stakeMinor * (price - 10000n) + 9999n) / 10000n;
 }
 
 /** Parse a euro input ("1.50", "10") to integer minor units. Float-free; null if malformed. */

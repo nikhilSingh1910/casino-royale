@@ -13,6 +13,7 @@ export function Header() {
     queryFn: () => api.balance(token as string),
     enabled: !!token,
     refetchOnWindowFocus: true,
+    refetchInterval: 20000, // fallback; live ticks invalidate it for immediacy after a settlement (N3)
   });
 
   return (

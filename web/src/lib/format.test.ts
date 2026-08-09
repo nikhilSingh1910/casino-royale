@@ -33,11 +33,11 @@ describe('formatRate — scaled price → profit-per-100 (the prototype Rate col
   });
 });
 
-describe('estimateProfit — stake × (odds − 1), integer floor', () => {
+describe('estimateProfit — stake × (odds − 1), rounded up to match backend winnings', () => {
   it('computes profit at a scaled price', () => {
     expect(estimateProfit(1000n, '19500')).toBe(950n); // €10 @1.95 → €9.50
     expect(estimateProfit(1000n, '21000')).toBe(1100n); // €10 @2.10 → €11.00
-    expect(estimateProfit(333n, '19000')).toBe(299n); // floors (333×0.9 = 299.7 → 299)
+    expect(estimateProfit(333n, '19000')).toBe(300n); // 333×0.9 = 299.7 → 300 (ceil, customer's favour — matches winnings)
   });
 });
 

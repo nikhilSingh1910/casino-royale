@@ -34,6 +34,11 @@ export class AccountService {
     return this.ledger.balance(userId);
   }
 
+  /** The daily bonus amount — one source of truth for both the mint and its display (§3.2 / N4). */
+  dailyBonus(): Chips {
+    return DAILY_BONUS;
+  }
+
   /** The account statement — chip movements, newest first, bounded (CLAUDE.md §3.3). */
   async statement(userId: string, limit: number): Promise<StatementRow[]> {
     const bounded = Math.max(1, Math.min(limit, STATEMENT_MAX));

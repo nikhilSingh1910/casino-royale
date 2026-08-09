@@ -18,6 +18,9 @@ export function useLiveUpdates(): void {
         return; // ignore a malformed event
       }
       void qc.invalidateQueries({ queryKey: ['matches'] });
+      // A tick can carry a settlement, which moves the wallet, bets, statement and board — refresh them too
+      // (inactive queries are a no-op, so this only refetches views that are actually open). N3.
+      for (const key of [['balance'], ['myBets'], ['statement'], ['leaderboard']]) void qc.invalidateQueries({ queryKey: key });
       if (matchId) {
         void qc.invalidateQueries({ queryKey: ['match', matchId] });
         void qc.invalidateQueries({ queryKey: ['score', matchId] });

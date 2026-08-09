@@ -29,6 +29,11 @@ export class AccountController {
     return rows.map((r) => ({ account: r.account, amount: r.amount.toString(), kind: r.kind, at: r.at }));
   }
 
+  @Get('bonus')
+  bonus(): { amount: string } {
+    return { amount: this.account.dailyBonus().toString() };
+  }
+
   @Post('bonus/claim')
   @HttpCode(200)
   async claimBonus(@CurrentSession() s: Session): Promise<{ claimed: boolean; available: string; reserved: string; nextClaimAt: string }> {

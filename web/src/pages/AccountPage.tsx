@@ -18,6 +18,7 @@ export function AccountPage() {
 
   return (
     <div>
+      <BalanceCard token={token} />
       <BonusCard token={token} />
       <div className="panel" style={{ marginBottom: 10 }}>
         <div className="panel__bar">My Account</div>
@@ -36,14 +37,29 @@ export function AccountPage() {
   );
 }
 
+function BalanceCard({ token }: { token: string }) {
+  const q = useQuery({ queryKey: ['balance'], queryFn: () => api.balance(token), refetchInterval: 20000 });
+  const b = q.data;
+  const total = b ? (BigInt(b.available) + BigInt(b.reserved)).toString() : null; // integer add, no float (§3.1)
+  return (
+    <div className="bal-card">
+      <div className="bal-card__cell"><span>Available</span><b>{b ? formatMoney(b.available) : '—'}</b></div>
+      <div className="bal-card__cell"><span>In open bets</span><b>{b ? formatMoney(b.reserved) : '—'}</b></div>
+      <div className="bal-card__cell bal-card__cell--total"><span>Total</span><b>{total ? formatMoney(total) : '—'}</b></div>
+    </div>
+  );
+}
+
 function BonusCard({ token }: { token: string }) {
   const qc = useQueryClient();
+  const info = useQuery({ queryKey: ['bonusInfo'], queryFn: () => api.bonusInfo(token) });
+  const amount = info.data ? formatMoney(info.data.amount) : null; // single source: backend DAILY_BONUS (N4)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const claim = useMutation({
     mutationFn: () => api.claimBonus(token),
     onSuccess: (r) => {
       if (r.claimed) {
-        setMsg({ ok: true, text: '✓ €500 added to your balance' });
+        setMsg({ ok: true, text: `✓ ${amount ?? 'Bonus'} added to your balance` });
         void qc.invalidateQueries({ queryKey: ['balance'] });
         void qc.invalidateQueries({ queryKey: ['statement'] });
         void qc.invalidateQueries({ queryKey: ['myBets'] });
@@ -59,11 +75,11 @@ function BonusCard({ token }: { token: string }) {
     <div className="bonus-card">
       <div>
         <div className="bonus-card__title">Daily Bonus</div>
-        <div className="bonus-card__sub">Claim €500 of free play chips — once a day.</div>
+        <div className="bonus-card__sub">{amount ? `Claim ${amount} of free play chips` : 'Claim free play chips'} — once a day.</div>
       </div>
       <div className="bonus-card__action">
         <button className="btn btn--green" onClick={() => claim.mutate()} disabled={claim.isPending}>
-          {claim.isPending ? '…' : 'Claim €500'}
+          {claim.isPending ? '…' : amount ? `Claim ${amount}` : 'Claim bonus'}
         </button>
         {note && <div className={`bonus-card__msg ${err || (msg && !msg.ok) ? 'is-muted' : 'is-ok'}`}>{note}</div>}
       </div>

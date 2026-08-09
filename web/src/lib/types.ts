@@ -88,6 +88,9 @@ export interface BonusClaimDto {
   reserved: string;
   nextClaimAt: string;
 }
+export interface BonusInfoDto {
+  amount: string;
+}
 export interface LeaderboardRowDto {
   rank: number;
   handle: string;
