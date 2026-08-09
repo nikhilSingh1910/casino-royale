@@ -35,7 +35,8 @@ export class AuthService {
   }
 
   async signup(email: string, password: string): Promise<{ userId: string }> {
-    if (await this.repo.findByEmail(email)) throw new AuthError('email already registered');
+    // Uniform with login's 'invalid credentials' — a duplicate must not confirm which emails exist (L3). Uniqueness is still enforced.
+    if (await this.repo.findByEmail(email)) throw new AuthError('invalid credentials');
     const { id } = await this.repo.createUser(email, await hashPassword(password));
     return { userId: id };
   }

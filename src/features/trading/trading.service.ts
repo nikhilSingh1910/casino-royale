@@ -19,6 +19,7 @@ export type ApproveResult = { kind: OperatorActionKind; actionId: string };
 export const EXECUTE_OVERRIDE = 'execute-override';
 
 const FLAG_MAX = 1000;
+const REDRIVE_MAX = 500;
 
 /**
  * The operator console (D36). Reversible market locks are single-auth + audited; money-affecting
@@ -128,13 +129,29 @@ export class TradingService {
     await this.actions.markExecuted(actionId);
   }
 
+  /**
+   * Startup reconciliation (L1): re-enqueue overrides claimed 'approved' whose execute-job may have failed to
+   * persist after the claim. Idempotent — singletonKey dedupes a live job and executeOverride no-ops once applied.
+   */
+  async redriveApprovedOverrides(): Promise<void> {
+    const stuck = await this.actions.approvedUnexecuted(REDRIVE_MAX);
+    await Promise.all(stuck.map((a) => this.jobs.send(EXECUTE_OVERRIDE, { actionId: a.id }, { singletonKey: a.id })));
+  }
+
   async reject(actionId: string, operator: string, reason: string): Promise<void> {
     const action = await this.actions.findAction(actionId);
     if (!action) throw new ActionNotFoundError(actionId);
     if (action.status !== 'pending') throw new ActionNotPendingError(actionId);
     const claimed = await this.actions.decide(actionId, 'rejected', operator);
     if (!claimed) throw new ActionNotPendingError(actionId);
-    await this.audit.record({ actor: operator, action: `action.reject.${action.kind}`, subject: action.market_id, reason });
+    await this.audit.record({
+      actor: operator,
+      action: `action.reject.${action.kind}`,
+      subject: action.market_id,
+      before: { status: 'pending', proposedBy: action.proposed_by },
+      after: { status: 'rejected' },
+      reason,
+    });
   }
 
   // ---- operator console reads (PC3b) ----------------------------------------

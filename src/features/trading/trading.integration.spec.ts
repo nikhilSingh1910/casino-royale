@@ -179,6 +179,31 @@ describe('trading console (integration, real Postgres) — CM5', () => {
     expect((await trading.recentAudit(100)).some((r) => r.action === 'market.suspend' && r.subject === marketId)).toBe(true);
   });
 
+  it('re-drives an override stranded in approved when its execute-job never persisted (L1)', async () => {
+    const u = await fundedUser(1000);
+    const { marketId } = await fancyMarket('redrive');
+    await placeBack(u, marketId, 100);
+    const { id } = await trading.propose('void', marketId, { reason: 'rain' }, ALICE);
+    // Simulate the strand: decide() committed 'approved' but jobs.send threw, so no execute-job exists.
+    await db.updateTable('operator_action').set({ status: 'approved', approved_by: BOB, decided_at: new Date() }).where('id', '=', id).execute();
+    expect(await marketStatus(marketId)).not.toBe('settled');
+
+    await trading.redriveApprovedOverrides(); // startup reconciliation re-enqueues → executes (inline)
+
+    expect(await marketStatus(marketId)).toBe('settled'); // the void applied
+    expect(await available(u)).toBe(1000n); // stake returned
+    expect((await db.selectFrom('operator_action').select('status').where('id', '=', id).executeTakeFirst())?.status).toBe('executed');
+  });
+
+  it('a rejected action records before/after state, like every back-office action (L2)', async () => {
+    const { marketId } = await fancyMarket('rej-audit');
+    const { id } = await trading.propose('void', marketId, { reason: 'x' }, ALICE);
+    await trading.reject(id, BOB, 'not warranted');
+    const row = await db.selectFrom('audit_log').select('detail').where('action', '=', 'action.reject.void').executeTakeFirstOrThrow();
+    const detail = typeof row.detail === 'string' ? JSON.parse(row.detail) : row.detail;
+    expect(detail).toMatchObject({ before: { status: 'pending', proposedBy: ALICE }, after: { status: 'rejected' }, reason: 'not warranted' });
+  });
+
   it('re-running an approved override is a no-op — durable retry safety (D45b)', async () => {
     const u = await fundedUser(1000);
     const { marketId } = await fancyMarket('t9');

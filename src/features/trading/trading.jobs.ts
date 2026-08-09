@@ -9,5 +9,6 @@ export class TradingJobs {
     jobs.register(EXECUTE_OVERRIDE, async (d) => {
       await trading.executeOverride(String(d.actionId));
     });
+    jobs.onReady(() => trading.redriveApprovedOverrides()); // L1: recover approvals whose execute-job never persisted
   }
 }

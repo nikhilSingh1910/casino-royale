@@ -1097,3 +1097,41 @@ at sport #2; don't deepen the coupling now).
 
 **Consequence.** A clear, play-money-scoped build sequence; the licensed endgoal (bible §0) is explicitly
 deferred, not abandoned.
+
+### D50 — Second adversarial audit + remediation (H1–H4, L1–L6)
+
+**Context.** After Phase 2 (PC1–PC5) shipped, a second whole-codebase adversarial audit ran (13
+quote-gated finders → one skeptic per finding → my own full-context re-verification of every survivor).
+21 findings raised, **11 confirmed** (4 material, 7 low), 10 dismissed. Full catalogue + disposition:
+`docs/HARDENING-FINDINGS.md`.
+
+**Decision — remediate all 11, grouped so one plan fixes several, each through the §2 loop.**
+- **H1** (settled market resurrectable via unguarded suspend→reopen): an atomic guarded
+  `MarketRepo.transitionStatus(from→to)`; operator suspend/reopen route through it; `settled` is
+  terminal, never clobbered. New typed `MarketStateError`→409. Also removes reopen's read-modify-write race.
+- **H2** (fancy exposure/liability collapsed all struck lines to one binary outcome): a `Resolution`
+  union + `sessionResolutions()` derived from the distinct struck lines — the *one* pure worst-case
+  engine (§5 rules 2/11) now evaluates every runs-interval. Bounded impact: mis-stated risk figures /
+  auto-suspend, never a mis-moved chip (reservations are per-bet).
+- **H4** (exposure aggregate truncated at 10 000 rows, no `partial` signal): positions **SQL-aggregated**
+  by `(side, runner_id, line_value)` — exact, bounded by market structure, no row-count truncation
+  (reuses the `leaderboard()`/`stakesByUser` `SUM…GROUP BY` idiom).
+- **H3/L4/L5** (frontend session hygiene): `queryClient.clear()` on every auth transition (no cross-user
+  cache bleed); `req()` clears+redirects an authenticated 401; the admin match-list gets the shared
+  `ErrorState`.
+- **L1** (approved override could strand if the enqueue failed after the claim): a reusable
+  `JobQueue.onReady` startup re-drive of `approved`-but-unexecuted actions, idempotent via `singletonKey`
+  + the status-guarded `executeOverride`.
+- **L2** (`reject` audit omitted before/after) and **L3** (signup existence oracle) and **L6** (three stale
+  STATE.md backlog lines): each corrected in place.
+- **Tests:** +9 (guarded transitions, settled-terminal, re-drive, reject audit, heterogeneous-line
+  exposure, duplicate-signup, struck-line-after-reprice, won→lost resettle clawback).
+
+**Deferred (latent, not a today-bug).** The `settleBall` reopen / match-end-void races are unreachable
+until a real feed adapter runs with `JOBS_ENABLED=true` (today only the non-prod demo ticker enqueues
+them, and `JOBS_ENABLED=false` runs handlers inline-ordered). Close when the feed adapter lands — likely
+by routing the bbb reopen through H1's terminal-status guard.
+
+**Consequence.** The money spine held under a second audit (no confirmed mis-moved chip); the real defects
+were operator-integrity, risk-figure correctness, and frontend session hygiene — all closed. Backend 29
+suites / 161 tests green (+9); web green.

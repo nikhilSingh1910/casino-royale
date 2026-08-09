@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ZodError } from 'zod';
-import { BetRejectedError, MatchResultError } from '../features/cricket';
+import { BetRejectedError, MarketStateError, MatchResultError } from '../features/cricket';
 import { AuthError, NotEligibleError } from '../features/identity';
 import { ActionNotFoundError, ActionNotPendingError, SoDViolationError } from '../features/trading';
 import { LedgerError, ReservationNotFoundError, ReservationNotOpenError, ReservationNotSettledError } from '../ledger';
@@ -36,7 +36,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (e instanceof ActionNotFoundError || e instanceof ReservationNotFoundError) {
       return { status: 404, body: { error: 'not_found', message: e.message } };
     }
-    if (e instanceof ActionNotPendingError || e instanceof ReservationNotOpenError || e instanceof ReservationNotSettledError) {
+    if (e instanceof ActionNotPendingError || e instanceof ReservationNotOpenError || e instanceof ReservationNotSettledError || e instanceof MarketStateError) {
       return { status: 409, body: { error: 'conflict', message: e.message } };
     }
     // A concurrent race can make the ledger reject on insufficient funds — a 409, never a leaked 500.

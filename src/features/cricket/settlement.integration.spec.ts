@@ -186,6 +186,36 @@ describe('in-play settlement (integration, real Postgres) — CM4', () => {
     expect(audit).toMatchObject({ actor: 'trader:alice', action: 'market.void', subject: marketId });
   });
 
+  it('settles each fancy bet against its STRUCK line, not the market’s repriced line (D35)', async () => {
+    const u = await fundedUser(1000);
+    const { marketId, overs } = await fancyMarket('struck-1'); // struck line = LINE (10)
+    await placeBack(u, marketId, 100);
+    await markets.setFancy(marketId, overs, 50, BACK, LAY); // the market reprices its line up to 50; the resting bet keeps its struck 10
+    await ingestWindow('struck-1', overs, 30); // 30 runs: ≥ struck 10 (back wins) but < repriced 50 (would lose if misresolved)
+
+    await settlement.settleDueMarkets('struck-1');
+
+    expect((await db.selectFrom('bet').select('status').where('user_id', '=', u).executeTakeFirstOrThrow()).status).toBe('won');
+    await expectBalanced();
+  });
+
+  it('resettles won → lost, clawing back the payout in one compensating transaction (ledger stays balanced)', async () => {
+    const u = await fundedUser(1000);
+    const { marketId, overs } = await fancyMarket('reset-wl');
+    await placeLay(u, marketId, 100); // a lay at line 10
+    await ingestWindow('reset-wl', overs, 5); // 5 < 10 → the lay wins
+    await settlement.settleDueMarkets('reset-wl');
+    expect((await db.selectFrom('bet').select('status').where('user_id', '=', u).executeTakeFirstOrThrow()).status).toBe('won');
+    const afterWin = await balances(u);
+
+    await awardPenalty('reset-wl', 6); // 5 + 6 = 11 ≥ 10 → the lay now loses
+    await settlement.resettleFancyMarket(marketId, 'trader:bob', 'penalty runs on review', 'corr-wl');
+
+    expect((await db.selectFrom('bet').select('status').where('user_id', '=', u).executeTakeFirstOrThrow()).status).toBe('lost');
+    expect((await balances(u)).available).toBeLessThan(afterWin.available); // the winning payout was clawed back
+    await expectBalanced();
+  });
+
   it('resettles a corrected result via one compensating transaction (lost → won)', async () => {
     const u = await fundedUser(1000);
     const { marketId, overs } = await fancyMarket('s7');

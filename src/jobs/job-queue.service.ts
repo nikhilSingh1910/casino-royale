@@ -14,6 +14,7 @@ export type JobHandler = (data: Record<string, unknown>) => Promise<void>;
 export class JobQueue implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger('jobs');
   private readonly handlers = new Map<string, JobHandler>();
+  private readonly recoveries: Array<() => Promise<void>> = [];
   private boss?: PgBoss;
 
   constructor(private readonly config: ConfigService) {}
@@ -21,6 +22,11 @@ export class JobQueue implements OnModuleInit, OnModuleDestroy {
   /** Register a queue's handler. Call from a provider constructor — before onModuleInit wires the worker. */
   register(queue: string, handler: JobHandler): void {
     this.handlers.set(queue, handler);
+  }
+
+  /** Register a post-start reconciliation, run once after the worker is up — re-drives durably-recorded work (L1). */
+  onReady(recover: () => Promise<void>): void {
+    this.recoveries.push(recover);
   }
 
   async onModuleInit(): Promise<void> {
@@ -33,6 +39,14 @@ export class JobQueue implements OnModuleInit, OnModuleDestroy {
     }
     this.boss = boss;
     this.log.log(`job queue on — ${this.handlers.size} worker(s)`);
+    // Reconcile durably-recorded work once the worker is up (L1). A recovery hiccup logs, never aborts boot — the next start retries.
+    for (const recover of this.recoveries) {
+      try {
+        await recover();
+      } catch (e) {
+        this.log.error(`recovery failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

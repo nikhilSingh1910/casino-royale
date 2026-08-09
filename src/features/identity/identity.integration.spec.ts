@@ -56,6 +56,12 @@ describe('identity (integration, real Postgres) — M2', () => {
     await expect(auth.login('nobody@example.com', 'whatever')).rejects.toThrow(AuthError);
   });
 
+  it('a duplicate signup gives the same generic error as login — no account-existence oracle (L3)', async () => {
+    const e = email();
+    await auth.signup(e, 'first password');
+    await expect(auth.signup(e, 'another password')).rejects.toThrow('invalid credentials');
+  });
+
   it('change-password revokes other sessions but keeps the current one', async () => {
     const e = email();
     await auth.signup(e, 'old password');

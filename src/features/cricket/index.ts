@@ -2,7 +2,7 @@ export { CricketModule } from './cricket.module';
 export { FeedIngestService } from './feed-ingest.service';
 export type { IngestResult, MarketRepricer } from './feed-ingest.service';
 export { CricketRepo } from './cricket.repo';
-export { MarketService } from './market.service';
+export { MarketService, MarketStateError } from './market.service';
 export type { MatchView, MarketView, RunnerView, FancyView, ScoreView, InningsView, OverBall, RecentBall, MatchListItem, RunnerPrice } from './market.service';
 export { deriveScore, runsInOvers, scorecard, ballOutcome } from './match-state';
 export type { MatchScore, Scorecard, InningsScore } from './match-state';

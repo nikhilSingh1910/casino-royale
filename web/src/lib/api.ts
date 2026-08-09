@@ -21,6 +21,12 @@ async function req<T>(path: string, init: RequestInit = {}, token?: string | nul
       ...init.headers,
     },
   });
+  if (res.status === 401 && token) {
+    // An authenticated request whose session was rejected (7-day expiry / revoked): clear it and recover to a clean login (L4).
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    window.location.assign('/login');
+  }
   const body: unknown = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
     const e = (body ?? {}) as { error?: string; message?: string };

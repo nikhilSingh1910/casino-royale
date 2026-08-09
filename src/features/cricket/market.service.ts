@@ -14,6 +14,9 @@ const MARKETS_MAX = 100;
 const RUNNERS_MAX = 1200;
 const BALLS_MAX = 5000;
 
+/** An operator status transition (lock/unlock) did not apply because the market was not in the required state — settled is terminal (H1). */
+export class MarketStateError extends Error {}
+
 export interface RunnerView {
   id: string;
   name: string;
@@ -153,13 +156,12 @@ export class MarketService implements MarketRepricer {
     return markets.find((m) => m.market_type === 'ball_by_ball')?.id ?? null;
   }
 
-  /** Operator lock/unlock of a single market (XC5.2). A settled market cannot be reopened. */
+  /** Operator lock/unlock of a single market (XC5.2). Guarded, atomic transitions — settled is terminal, never clobbered (H1). */
   async suspendMarket(marketId: string): Promise<void> {
-    await this.repo.setStatusForMarket(marketId, 'suspended');
+    if (!(await this.repo.transitionStatus(marketId, 'open', 'suspended'))) throw new MarketStateError('only an open market can be suspended');
   }
   async reopenMarket(marketId: string): Promise<void> {
-    const m = await this.repo.getMarketWithFancy(marketId);
-    if (m?.status === 'suspended') await this.repo.setStatusForMarket(marketId, 'open');
+    if (!(await this.repo.transitionStatus(marketId, 'suspended', 'open'))) throw new MarketStateError('only a suspended market can be reopened');
   }
 
   /** The lobby list — matches with their 1/X/2 match-odds top-of-book (one grouped query, no N+1). */

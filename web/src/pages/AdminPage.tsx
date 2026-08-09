@@ -118,10 +118,14 @@ function MatchesTab({ token }: { token: string }) {
 
   return (
     <div className="panel" style={{ padding: 12 }}>
-      <select className="input" value={sel} onChange={(e) => setSel(e.target.value)} style={{ maxWidth: 340 }} aria-label="Select match">
-        <option value="">Select a match…</option>
-        {(matchesQ.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.name} — {m.status}</option>)}
-      </select>
+      {matchesQ.isError ? (
+        <ErrorState title="Couldn’t load matches" onRetry={() => void matchesQ.refetch()} />
+      ) : (
+        <select className="input" value={sel} onChange={(e) => setSel(e.target.value)} style={{ maxWidth: 340 }} aria-label="Select match">
+          <option value="">Select a match…</option>
+          {(matchesQ.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.name} — {m.status}</option>)}
+        </select>
+      )}
       {msg && <div className="admin-msg">{msg}</div>}
 
       {matchQ.isLoading && sel && <Loading />}

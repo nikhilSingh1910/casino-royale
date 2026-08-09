@@ -5,7 +5,7 @@ import { chips } from '../../shared/money';
 import { CricketRepo } from './cricket.repo';
 import { FeedIngestService } from './feed-ingest.service';
 import { MarketRepo } from './market.repo';
-import { MarketService } from './market.service';
+import { MarketService, MarketStateError } from './market.service';
 
 const TEST_URL = 'postgres://localhost:5432/casino_royale_test';
 
@@ -100,6 +100,33 @@ describe('cricket markets (integration, real Postgres) — CM2', () => {
   it('sets a stake limit via config', async () => {
     await market.setMaxStake('fancy', chips(500));
     expect((await marketRepo.getConfig('fancy'))?.max_stake).toBe(500n);
+  });
+
+  it('operator suspend/reopen are guarded transitions: open→suspended→open only', async () => {
+    const m = 'match-5';
+    await cricketRepo.upsertMatch(fixture(m));
+    await market.createMarketsForMatch(m, ['A', 'B']);
+    const [mk] = await market.getMarkets(m);
+    if (!mk) throw new Error('expected a market');
+
+    await market.suspendMarket(mk.id);
+    expect((await marketRepo.getMarketWithFancy(mk.id))?.status).toBe('suspended');
+    await market.reopenMarket(mk.id);
+    expect((await marketRepo.getMarketWithFancy(mk.id))?.status).toBe('open');
+    await expect(market.reopenMarket(mk.id)).rejects.toThrow(MarketStateError); // already open, not suspended
+  });
+
+  it('a settled market is terminal — cannot be suspended or reopened (H1)', async () => {
+    const m = 'match-6';
+    await cricketRepo.upsertMatch(fixture(m));
+    await market.createMarketsForMatch(m, ['A', 'B']);
+    const [mk] = await market.getMarkets(m);
+    if (!mk) throw new Error('expected a market');
+    await marketRepo.setStatusForMarket(mk.id, 'settled');
+
+    await expect(market.suspendMarket(mk.id)).rejects.toThrow(MarketStateError);
+    await expect(market.reopenMarket(mk.id)).rejects.toThrow(MarketStateError);
+    expect((await marketRepo.getMarketWithFancy(mk.id))?.status).toBe('settled'); // never clobbered
   });
 
   it('a suspended match suspends its markets on reprice', async () => {

@@ -129,6 +129,12 @@ export class MarketRepo {
     await ex.updateTable('market').set({ status }).where('id', '=', marketId).execute();
   }
 
+  /** Guarded, atomic operator transition — applies only from `from`; returns whether it did. A settled market can't be clobbered (H1). */
+  async transitionStatus(marketId: string, from: MarketStatus, to: MarketStatus, ex: Executor = this.db): Promise<boolean> {
+    const res = await ex.updateTable('market').set({ status: to }).where('id', '=', marketId).where('status', '=', from).executeTakeFirst();
+    return (res?.numUpdatedRows ?? 0n) > 0n;
+  }
+
   /** The market's status under a row lock — placement re-checks it inside the reserve txn (D44). */
   async statusForUpdate(ex: Executor, marketId: string): Promise<MarketStatus | undefined> {
     const r = await ex.selectFrom('market').select('status').where('id', '=', marketId).forUpdate().executeTakeFirst();

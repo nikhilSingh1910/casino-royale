@@ -53,4 +53,15 @@ export class TradingRepo {
       .limit(limit)
       .execute();
   }
+
+  /** Approved overrides not yet executed — the startup re-drive re-enqueues these (L1: the enqueue can fail after the claim). */
+  async approvedUnexecuted(limit: number) {
+    return this.db
+      .selectFrom('operator_action')
+      .select(['id'])
+      .where('status', '=', 'approved')
+      .orderBy('decided_at', 'asc')
+      .limit(limit)
+      .execute();
+  }
 }

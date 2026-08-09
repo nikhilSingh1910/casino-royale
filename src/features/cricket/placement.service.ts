@@ -4,7 +4,7 @@ import { price, winnings } from '../../shared/odds';
 import { BetSide } from '../../db';
 import { LedgerService } from '../../ledger';
 import { AccountService } from '../identity';
-import { BetPosition, calculateCustomerExposure, calculateOperatorLiability, SESSION_SCENARIOS } from './exposure';
+import { BetPosition, calculateCustomerExposure, calculateOperatorLiability, Resolution, sessionResolutions } from './exposure';
 import { BetRepo } from './bet.repo';
 import { MarketRepo } from './market.repo';
 
@@ -164,10 +164,10 @@ export class PlacementService {
         },
         trx,
       );
-      // Runner markets carry threshold 0 = off (D37): the binary liability formula has no multi-runner worst case.
+      // Runner markets carry threshold 0 = off (D37). The cap runs only for fancy markets (threshold > 0).
       if ((a.cfg.session_threshold as bigint) > 0n) {
-        // The cap only runs for fancy markets (threshold > 0), so their two session scenarios apply.
-        const liability = calculateOperatorLiability(await this.bets.positionsForMarket(a.marketId, POSITIONS_MAX, trx), SESSION_SCENARIOS);
+        const positions = await this.bets.positionsForMarket(a.marketId, POSITIONS_MAX, trx);
+        const liability = calculateOperatorLiability(positions, sessionResolutions(positions));
         if ((liability as bigint) > a.cfg.session_threshold) await this.markets.setStatusForMarket(a.marketId, 'suspended', trx);
       }
     });
@@ -177,28 +177,22 @@ export class PlacementService {
     throw new BetRejectedError('placement could not be completed');
   }
 
-  /** CLAUDE.md §5 rule 2 — the same function the risk console uses (XC3.3), across the market's outcomes. */
+  /** CLAUDE.md §5 rule 2 — the same function the risk console uses (XC3.3), across the market's resolutions. */
   async customerExposure(userId: string, marketId: string): Promise<Chips> {
-    const [positions, scenarios] = await Promise.all([
-      this.bets.positionsForUserMarket(userId, marketId, POSITIONS_MAX),
-      this.scenariosFor(marketId),
-    ]);
-    return calculateCustomerExposure(positions, scenarios);
+    const positions = await this.bets.positionsForUserMarket(userId, marketId, POSITIONS_MAX);
+    return calculateCustomerExposure(positions, await this.scenariosFor(marketId, positions));
   }
 
   async operatorLiability(marketId: string): Promise<Chips> {
-    const [positions, scenarios] = await Promise.all([
-      this.bets.positionsForMarket(marketId, POSITIONS_MAX),
-      this.scenariosFor(marketId),
-    ]);
-    return calculateOperatorLiability(positions, scenarios);
+    const positions = await this.bets.positionsForMarket(marketId, POSITIONS_MAX);
+    return calculateOperatorLiability(positions, await this.scenariosFor(marketId, positions));
   }
 
-  /** A market's possible resolutions: its runners (runner markets), or line reached / missed (fancy). */
-  private async scenariosFor(marketId: string): Promise<readonly string[]> {
+  /** A market's resolutions: its runners (runner markets), or the distinct struck lines of the given positions (fancy). */
+  private async scenariosFor(marketId: string, positions: readonly BetPosition[]): Promise<Resolution[]> {
     const market = await this.markets.getMarketWithFancy(marketId);
-    if (market?.fancy) return SESSION_SCENARIOS;
-    return (await this.markets.runnersForMarket(marketId, RUNNERS_MAX)).map((r) => r.id);
+    if (market?.fancy) return sessionResolutions(positions);
+    return (await this.markets.runnersForMarket(marketId, RUNNERS_MAX)).map((r) => ({ runner: r.id }));
   }
 
   /** Book liability across a whole match — per-market worst cases summed (XC5.1). Reuses §5 rule 11. */
@@ -208,14 +202,15 @@ export class PlacementService {
       this.markets.marketsForMatch(matchId, MARKETS_MAX),
       this.markets.runnersForMatch(matchId, RUNNERS_MAX),
     ]);
-    const runnerIdsByMarket = new Map<string, string[]>();
-    for (const r of runners) runnerIdsByMarket.set(r.market_id, [...(runnerIdsByMarket.get(r.market_id) ?? []), r.id]);
+    const runnerResByMarket = new Map<string, Resolution[]>();
+    for (const r of runners) runnerResByMarket.set(r.market_id, [...(runnerResByMarket.get(r.market_id) ?? []), { runner: r.id }]);
     const positionsByMarket = new Map<string, BetPosition[]>();
     for (const { marketId, position } of tagged) positionsByMarket.set(marketId, [...(positionsByMarket.get(marketId) ?? []), position]);
 
     let total = ZERO;
     for (const [mid, positions] of positionsByMarket) {
-      const scenarios = mkts.find((m) => m.id === mid)?.market_type === 'fancy' ? SESSION_SCENARIOS : (runnerIdsByMarket.get(mid) ?? []);
+      const isFancy = mkts.find((m) => m.id === mid)?.market_type === 'fancy';
+      const scenarios = isFancy ? sessionResolutions(positions) : (runnerResByMarket.get(mid) ?? []);
       total = add(total, calculateOperatorLiability(positions, scenarios));
     }
     return total;

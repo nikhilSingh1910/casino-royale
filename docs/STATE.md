@@ -167,12 +167,14 @@ and the decision log):
   over from `scorecard()`); `GET /matches` now carries each match's match-odds top-of-book (one grouped
   query, no N+1). *Deferred:* live push (polling), chase/target summary, inline lobby betting (needs ids
   in the list), non-cricket sports/casino (coming-soon states), prod `/api` routing.
-- **Per-runner operator liability / exposure** — the §5-rule-11 formula is binary; multi-runner needs a
-  per-runner worst case (D37). Runner auto-suspend is off until then.
+- **Runner-market auto-suspend** — the §5-rule-11 liability formula is N-outcome (runners, C2) and
+  interval-correct across heterogeneous fancy lines (H2); runner auto-suspend stays **off by config**
+  (`session_threshold = 0`, D37) — a deliberate default, re-enabled by setting a threshold.
 - **Per-user stake factoring** (`XC3.7`/`XC5.3`) and **timed bet-delay** (`XC3.4`).
-- **Durable settlement job-queue trigger** — `settleDueMarkets` is callable but not yet drained by a
-  worker (no queue built, D33).
-- **Saga gaps** — reserve+bet atomicity (CM3), operator-action claim↔execute (CM5).
+- ✅ **Durable settlement job-queue** — DONE (D45): pg-boss drains `settleDueMarkets` and the four-eyes
+  `execute-override` job (execute-then-mark), with a startup re-drive of stranded approvals (L1).
+- ✅ **Saga gaps closed** — reserve+bet atomicity (D44, one ACID txn via the ledger hook) and
+  operator-action claim↔execute (D45) are both closed.
 - **Multi-innings session markets**, **runner-market resettlement**, **HTTP e2e** for the console.
 - **GDPR / SOC2 / compliance** — a later cycle, as agreed (out of scope now, D32).
 

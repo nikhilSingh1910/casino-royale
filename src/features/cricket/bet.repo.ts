@@ -56,15 +56,19 @@ const RETURN_COLS = ['id', 'side', 'stake', 'reserved', 'potential_payout', 'sta
 
 interface PositionRow {
   side: BetSide;
-  reserved: bigint;
-  potential_payout: bigint;
   runner_id: string | null;
+  line_value: number | null;
+  reserved: string; // SUM() over the group, as text
+  potential_payout: string; // SUM() over the group, as text
 }
+// Positions are aggregated per (side, runner_id, line_value): the worst-case sum distributes, so grouping is exact
+// and the result set is bounded by market structure, not bet count — no row-count truncation of the aggregate (H4).
 const toPosition = (r: PositionRow): BetPosition => ({
-  outcome: r.runner_id ?? SESSION_OUTCOME, // a runner id, or the session line for fancy bets (audit C2)
+  outcome: r.runner_id ?? SESSION_OUTCOME,
   side: r.side,
-  reserved: chips(r.reserved),
-  potentialPayout: chips(r.potential_payout),
+  reserved: chips(BigInt(r.reserved)),
+  potentialPayout: chips(BigInt(r.potential_payout)),
+  line: r.line_value ?? undefined, // the struck line, for fancy bets — drives per-line resolution (H2)
 });
 
 /** One player's settled net P&L for the leaderboard (PC5). */
@@ -126,9 +130,12 @@ export class BetRepo {
   async positionsForMarket(marketId: string, limit: number, ex: Executor = this.db): Promise<BetPosition[]> {
     const rows = await ex
       .selectFrom('bet')
-      .select(['side', 'reserved', 'potential_payout', 'runner_id'])
+      .select(['side', 'runner_id', 'line_value'])
+      .select(sql<string>`COALESCE(SUM(reserved), 0)::text`.as('reserved'))
+      .select(sql<string>`COALESCE(SUM(potential_payout), 0)::text`.as('potential_payout'))
       .where('market_id', '=', marketId)
       .where('status', '=', 'open')
+      .groupBy(['side', 'runner_id', 'line_value'])
       .limit(limit)
       .execute();
     return rows.map(toPosition);
@@ -137,10 +144,13 @@ export class BetRepo {
   async positionsForUserMarket(userId: string, marketId: string, limit: number): Promise<BetPosition[]> {
     const rows = await this.db
       .selectFrom('bet')
-      .select(['side', 'reserved', 'potential_payout', 'runner_id'])
+      .select(['side', 'runner_id', 'line_value'])
+      .select(sql<string>`COALESCE(SUM(reserved), 0)::text`.as('reserved'))
+      .select(sql<string>`COALESCE(SUM(potential_payout), 0)::text`.as('potential_payout'))
       .where('user_id', '=', userId)
       .where('market_id', '=', marketId)
       .where('status', '=', 'open')
+      .groupBy(['side', 'runner_id', 'line_value'])
       .limit(limit)
       .execute();
     return rows.map(toPosition);
@@ -190,9 +200,12 @@ export class BetRepo {
   async positionsForMatch(matchId: string, limit: number): Promise<{ marketId: string; position: BetPosition }[]> {
     const rows = await this.db
       .selectFrom('bet')
-      .select(['market_id', 'side', 'reserved', 'potential_payout', 'runner_id'])
+      .select(['market_id', 'side', 'runner_id', 'line_value'])
+      .select(sql<string>`COALESCE(SUM(reserved), 0)::text`.as('reserved'))
+      .select(sql<string>`COALESCE(SUM(potential_payout), 0)::text`.as('potential_payout'))
       .where('match_id', '=', matchId)
       .where('status', '=', 'open')
+      .groupBy(['market_id', 'side', 'runner_id', 'line_value'])
       .limit(limit)
       .execute();
     return rows.map((r) => ({ marketId: r.market_id, position: toPosition(r) }));
