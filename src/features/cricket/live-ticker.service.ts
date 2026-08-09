@@ -6,6 +6,7 @@ import { ballOutcome } from './match-state';
 import { MarketService } from './market.service';
 import { JobQueue } from '../../jobs';
 import { SETTLE_BALL, SETTLE_DUE, SETTLE_MATCH } from './cricket.jobs';
+import { LiveEvents } from './live-events.service';
 
 const BALLS_MAX = 5000;
 
@@ -25,6 +26,7 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
     private readonly cricket: CricketRepo,
     private readonly markets: MarketService,
     private readonly jobs: JobQueue,
+    private readonly live: LiveEvents,
   ) {}
 
   onModuleInit(): void {
@@ -55,8 +57,10 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
       const live = await this.cricket.matchesByStatus('inplay', 10);
       if (live.length === 0) {
         const [next] = await this.cricket.matchesByStatus('scheduled', 1);
-        if (next) await this.cricket.setStatus(next.match_id, 'inplay');
-        else await this.seedDemo(); // demo mode only (the ticker is off unless LIVE_TICK_MS > 0)
+        if (next) {
+          await this.cricket.setStatus(next.match_id, 'inplay');
+          this.live.publish(next.match_id);
+        } else await this.seedDemo(); // demo mode only (the ticker is off unless LIVE_TICK_MS > 0)
         return;
       }
       for (const m of live) {
@@ -67,6 +71,7 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
             await this.jobs.send(SETTLE_MATCH, { matchId: m.match_id, winner: deriveWinner(balls, teamFirst, teamSecond) }, { singletonKey: m.match_id });
           }
           await this.cricket.setStatus(m.match_id, 'closed');
+          this.live.publish(m.match_id);
           continue;
         }
         const ball = nextBall(m.match_id, balls, Math.random());
@@ -75,6 +80,7 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
         await this.jobs.send(SETTLE_DUE, { matchId: m.match_id }, { singletonKey: m.match_id });
         const bbb = await this.markets.ballByBallMarketId(m.match_id);
         if (bbb) await this.jobs.send(SETTLE_BALL, { marketId: bbb, outcome: ballOutcome(ball) }, { singletonKey: bbb });
+        this.live.publish(m.match_id); // push the new ball + prices to subscribed clients (PC4)
       }
     } catch (e) {
       this.log.error(e instanceof Error ? e.message : String(e));
@@ -91,6 +97,7 @@ export class LiveTicker implements OnModuleInit, OnModuleDestroy {
     await this.cricket.upsertMatch({ matchId, competition: 'Kestrel Demo T20', name: `${pair[0]} v ${pair[1]}`, startsAt: new Date() });
     await this.markets.createMarketsForMatch(matchId, pair);
     await this.cricket.setStatus(matchId, 'inplay');
+    this.live.publish(matchId);
     this.log.log(`seeded demo match ${matchId}`);
   }
 }

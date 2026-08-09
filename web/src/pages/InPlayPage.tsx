@@ -24,7 +24,7 @@ const emptyTitle = (tab: Tab) => (tab === 'inplay' ? 'No cricket in-play right n
 
 export function InPlayPage() {
   const [tab, setTab] = useState<Tab>('inplay');
-  const q = useQuery({ queryKey: ['matches'], queryFn: api.matches, refetchInterval: 10_000 });
+  const q = useQuery({ queryKey: ['matches'], queryFn: api.matches, refetchInterval: 20_000 }); // SSE-driven; poll is the fallback (PC4)
   const matches = (q.data ?? []).filter((m) => filterFor(tab, m));
 
   return (

@@ -5,7 +5,7 @@ import { PromoCarousel } from '../components/PromoCarousel';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 
 export function HomePage() {
-  const q = useQuery({ queryKey: ['matches'], queryFn: api.matches, refetchInterval: 8000 });
+  const q = useQuery({ queryKey: ['matches'], queryFn: api.matches, refetchInterval: 20000 }); // SSE drives updates; poll is the fallback (PC4)
 
   const body = q.isLoading ? (
     <div className="panel"><Loading /></div>

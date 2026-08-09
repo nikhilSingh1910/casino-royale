@@ -1,4 +1,6 @@
-import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
+import { Controller, Get, MessageEvent, NotFoundException, Param, Sse } from '@nestjs/common';
+import { map, Observable } from 'rxjs';
+import { LiveEvents } from './live-events.service';
 import { MarketService, MatchView, RunnerPrice } from './market.service';
 
 const serPrice = (p: RunnerPrice | null) => (p ? { back: p.back.toString(), lay: p.lay.toString() } : null);
@@ -6,7 +8,17 @@ const serPrice = (p: RunnerPrice | null) => (p ? { back: p.back.toString(), lay:
 /** Public market data for the lobby and market view (D37/CM-web). Prices cross the wire as strings. */
 @Controller('matches')
 export class MatchController {
-  constructor(private readonly markets: MarketService) {}
+  constructor(
+    private readonly markets: MarketService,
+    private readonly live: LiveEvents,
+  ) {}
+
+  /** Server-sent stream of live match changes — clients refetch the affected views (PC4).
+   *  Static path, declared before ':id' so it isn't captured as a match id. */
+  @Sse('stream')
+  stream(): Observable<MessageEvent> {
+    return this.live.stream().pipe(map((e) => ({ data: e })));
+  }
 
   @Get()
   async list() {

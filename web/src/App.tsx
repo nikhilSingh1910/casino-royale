@@ -4,6 +4,7 @@ import { Nav } from './components/Nav';
 import { OpenBets } from './components/OpenBets';
 import { Sidebar } from './components/Sidebar';
 import { SelectionProvider } from './lib/selection';
+import { useLiveUpdates } from './lib/useLiveUpdates';
 import { AccountPage } from './pages/AccountPage';
 import { AdminPage } from './pages/AdminPage';
 import { BallByBallPage } from './pages/BallByBallPage';
@@ -32,9 +33,16 @@ function Shell() {
   );
 }
 
+/** One app-wide subscription to the live stream (PC4) — refetches match views on each server push. */
+function LiveUpdates() {
+  useLiveUpdates();
+  return null;
+}
+
 export function App() {
   return (
     <SelectionProvider>
+      <LiveUpdates />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<Shell />}>

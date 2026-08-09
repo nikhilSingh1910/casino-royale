@@ -10,6 +10,7 @@ import { IdentityRepo } from '../identity';
 import { CricketModule } from './cricket.module';
 import { CricketRepo, MarketService, PlacementService } from './index';
 import { LiveTicker } from './live-ticker.service';
+import { LiveEvents } from './live-events.service';
 
 const TEST_URL = 'postgres://localhost:5432/casino_royale_test';
 
@@ -21,6 +22,7 @@ describe('live ticker (integration, real Postgres) — D43/D46', () => {
   let ledger: LedgerService;
   let placement: PlacementService;
   let identity: IdentityRepo;
+  let live: LiveEvents;
 
   beforeAll(async () => {
     const cfg = { get: (k: string) => ({ DATABASE_URL: TEST_URL, NODE_ENV: 'test', FEED_SOURCE: 'fixture', LOG_LEVEL: 'silent', PORT: 3000, LIVE_TICK_MS: 0 })[k] };
@@ -33,6 +35,7 @@ describe('live ticker (integration, real Postgres) — D43/D46', () => {
     ledger = moduleRef.get(LedgerService, { strict: false });
     placement = moduleRef.get(PlacementService, { strict: false });
     identity = moduleRef.get(IdentityRepo, { strict: false });
+    live = moduleRef.get(LiveEvents, { strict: false });
   });
   afterAll(async () => {
     await db.destroy();
@@ -89,5 +92,16 @@ describe('live ticker (integration, real Postgres) — D43/D46', () => {
     expect((await ledger.balance(u)).available as bigint).toBe(1000n + profit); // the backer of 'A' is paid
     expect((await markets.getMarket(mo))?.status).toBe('settled');
     expect((await ledger.verifyIntegrity()).sumsToZero).toBe(true);
+  });
+
+  it('publishes a live event when it advances a match (PC4)', async () => {
+    await cricket.upsertMatch({ matchId: 'lp1', competition: 'T', name: 'A v B', startsAt: new Date('2026-08-09T08:00:00Z') });
+    await markets.createMarketsForMatch('lp1', ['A', 'B']);
+    await cricket.setStatus('lp1', 'inplay');
+    const seen: string[] = [];
+    const sub = live.stream().subscribe((e) => seen.push(e.matchId));
+    await ticker.tick(); // appends a ball → publishes
+    sub.unsubscribe();
+    expect(seen).toContain('lp1');
   });
 });

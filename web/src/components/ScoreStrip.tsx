@@ -6,7 +6,7 @@ const ballClass = (b: OverBallDto) => (b.wicket ? 'ball ball--w' : b.runs >= 4 ?
 const ballText = (b: OverBallDto) => (b.wicket ? 'W' : b.runs === 0 ? '·' : String(b.runs));
 
 export function ScoreStrip({ matchId }: { matchId: string }) {
-  const q = useQuery({ queryKey: ['score', matchId], queryFn: () => api.score(matchId), refetchInterval: 5000 });
+  const q = useQuery({ queryKey: ['score', matchId], queryFn: () => api.score(matchId), refetchInterval: 15000 }); // SSE-driven; poll = fallback (PC4)
   const s = q.data;
   if (!s) return null;
 

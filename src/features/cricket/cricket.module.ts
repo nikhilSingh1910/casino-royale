@@ -14,13 +14,14 @@ import { SettlementService } from './settlement.service';
 import { MatchController } from './match.controller';
 import { BetController } from './bet.controller';
 import { LiveTicker } from './live-ticker.service';
+import { LiveEvents } from './live-events.service';
 import { CricketJobs } from './cricket.jobs';
 import { JobsModule } from '../../jobs';
 
 @Module({
   imports: [DatabaseModule, LedgerModule, IdentityModule, AuditModule, JobsModule],
   controllers: [MatchController, BetController],
-  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService, LiveTicker, CricketJobs, BetHistoryService],
+  providers: [CricketRepo, FeedIngestService, MarketRepo, MarketService, BetRepo, PlacementService, SettlementService, LiveTicker, LiveEvents, CricketJobs, BetHistoryService],
   exports: [FeedIngestService, CricketRepo, MarketService, PlacementService, SettlementService],
 })
 export class CricketModule {}
